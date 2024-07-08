@@ -1,6 +1,6 @@
 import testing_utils
 import tempfile
-import walytis_beta_api as walytis_api
+import walytis_beta_api as walytis_beta_api
 import pytest
 import sys
 import os
@@ -12,16 +12,16 @@ import json
 from multi_crypt import Crypt
 import shutil
 
-walytis_api.log.PRINT_DEBUG = False
+walytis_beta_api.log.PRINT_DEBUG = False
 
 if True:
     sys.path.insert(0, os.path.join(
-        os.path.abspath(os.path.dirname(os.path.dirname(__file__))), "src"
+        os.path.abspath(os.path.dirname(os.path.dirname(__file__))),
     ))
     sys.path.insert(0, os.path.join(
         os.path.abspath(os.path.dirname(os.path.dirname(__file__))), "..", "WalytisAuth", "src"
     ))
-
+    from private_blockchain import PrivateBlockchain
     from identity.did_objects import Key
     from identity.key_store import KeyStore
     from identity.identity import IdentityAccess
@@ -163,11 +163,11 @@ def test_add_member_identity():
     try:
         pytest.member_2 = IdentityAccess.join(
             pytest.invitation, pytest.member_2_config_dir, pytest.CRYPT)
-    except walytis_api.JoinFailureError:
+    except walytis_beta_api.JoinFailureError:
         try:
             pytest.member_2 = IdentityAccess.join(
                 pytest.invitation, pytest.member_2_config_dir, pytest.CRYPT)
-        except walytis_api.JoinFailureError as error:
+        except walytis_beta_api.JoinFailureError as error:
             print(error)
             breakpoint()
     pytest.member_2_did = pytest.member_2.member_did_manager.get_did()
@@ -176,7 +176,7 @@ def test_add_member_identity():
     polite_wait(2)
 
     print("Adding member on docker...")
-    wait_dur_s = 40
+    wait_dur_s = 60
     python_code = (
         "import sys;"
         "from time import sleep;"
@@ -208,6 +208,21 @@ def test_add_member_identity():
     )
 
 
+HELLO_THERE = "Hello there!".encode()
+
+
+def test_add_block():
+    pytest.blockchain_id = walytis_beta_api.create_blockchain()
+    pytest.pri_blockchain = PrivateBlockchain(
+        pytest.member_2, walytis_beta_api.Blockchain, pytest.blockchain_id
+    )
+    block = pytest.pri_blockchain.add_block(HELLO_THERE)
+    mark(
+        pytest.pri_blockchain.get_blocks()[-1].block_content == block.block_content == HELLO_THERE,
+        "Created private blockchain, added block"
+    )
+
+
 def run_tests():
     print("\nRunning tests for Key Sharing:")
     test_preparations()
@@ -219,6 +234,7 @@ def run_tests():
         cleanup()
         return
     test_add_member_identity()
+    test_add_block()
     cleanup()
 
 

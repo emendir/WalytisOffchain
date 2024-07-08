@@ -35,7 +35,7 @@ if __name__ == "__main__":
         auto_run=False
     )
 
-    container_id = docker_container.container.id
+    container_id = docker_container.container.blockchain_id
     # Start the container
     docker_container.start(await_brenthy=False, await_ipfs=True)
 
