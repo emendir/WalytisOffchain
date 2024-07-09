@@ -2,6 +2,8 @@ FROM local/priblocks_prereqs:latest
 WORKDIR /opt/PriBlocks
 COPY . /opt/PriBlocks
 
+RUN mkdir /opt/PB_TestIdentity
+RUN tar -xzf /opt/PriBlocks/tests/priblocks_docker/identity_access_1.tar -C /opt/PB_TestIdentity
 
 # RUN pip install --no-dependencies /opt/PriBlocks/
 

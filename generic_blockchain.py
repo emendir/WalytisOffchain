@@ -128,3 +128,7 @@ class Blockchain(ABC):
     @abstractmethod
     def terminate(self) -> None:
         pass
+
+    @abstractmethod
+    def delete(self) -> None:
+        pass

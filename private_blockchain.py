@@ -121,7 +121,13 @@ class PrivateBlockchain(blockstore.BlockStore):
         conv.close()
 
     def terminate(self) -> None:
+        self.identity.terminate()
         self.base_blockchain.terminate()
+
+    def delete(self) -> None:
+        self.terminate()
+        self.identity.delete()
+        self.base_blockchain.delete()
 
     def __del__(self) -> None:
         self.terminate()
