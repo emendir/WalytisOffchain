@@ -5,6 +5,7 @@ from ipfs_datatransmission import ConversationListener, join_conversation, start
 from identity.identity import IdentityAccess
 from typing import Callable
 from generic_blockchain import Blockchain, Block
+import walytis_beta_api
 COMMS_TIMEOUT_S = 30
 
 
@@ -23,14 +24,15 @@ class PrivateBlockchain(blockstore.BlockStore):
         update_blockids_before_handling: bool = False,
     ):
         self.identity = identity
-        self.base_blockchain: Blockchain = base_blockchain_type(
-            blockchain_id=blockchain_id,
-            app_name=app_name,
-            block_received_handler=self._on_block_received,
-            auto_load_missed_blocks=auto_load_missed_blocks,
-            forget_appdata=forget_appdata,
-            sequential_block_handling=sequential_block_handling
-        )
+        # self.base_blockchain: Blockchain = base_blockchain_type(
+        #     blockchain_id=blockchain_id,
+        #     app_name=app_name,
+        #     block_received_handler=self._on_block_received,
+        #     auto_load_missed_blocks=auto_load_missed_blocks,
+        #     forget_appdata=forget_appdata,
+        #     sequential_block_handling=sequential_block_handling
+        # )
+        self.base_blockchain = self.identity.person_did_manager.blockchain
         self.block_received_handler = block_received_handler
 
         self.init_blockstore()
@@ -123,11 +125,18 @@ class PrivateBlockchain(blockstore.BlockStore):
     def terminate(self) -> None:
         self.identity.terminate()
         self.base_blockchain.terminate()
+        self.content_request_listener.terminate()
 
     def delete(self) -> None:
         self.terminate()
-        self.identity.delete()
-        self.base_blockchain.delete()
+        try:
+            self.identity.delete()
+        except walytis_beta_api.NoSuchBlockchainError:
+            pass
+        try:
+            self.base_blockchain.delete()
+        except walytis_beta_api.NoSuchBlockchainError:
+            pass
 
     def __del__(self) -> None:
         self.terminate()

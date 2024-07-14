@@ -62,6 +62,15 @@ def run():
     print("Unlocked PersonIdentity on joined access.")
 
     shutil.copy(
+        identity_access_1.person_did_manager.blockchain.get_blockchain_data(),
+        os.path.join(config_dir_1, "person_blockchain.zip")
+    )
+    shutil.copy(
+        identity_access_1.member_did_manager.blockchain.get_blockchain_data(),
+        os.path.join(config_dir_1, "member_blockchain.zip")
+    )
+
+    shutil.copy(
         identity_access_2.person_did_manager.blockchain.get_blockchain_data(),
         os.path.join(config_dir_2, "person_blockchain.zip")
     )

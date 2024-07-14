@@ -23,7 +23,8 @@ if True:
         os.path.abspath(os.path.dirname(os.path.dirname(__file__))),
     ))
     sys.path.insert(0, os.path.join(
-        os.path.abspath(os.path.dirname(os.path.dirname(__file__))), "..", "WalytisAuth", "src"
+        os.path.abspath(os.path.dirname(os.path.dirname(
+            __file__))), "..", "WalytisAuth", "src"
     ))
     from identity.identity import IdentityAccess
 
@@ -32,6 +33,9 @@ REBUILD_DOCKER = True
 
 # automatically remove all docker containers after failed tests
 DELETE_ALL_BRENTHY_DOCKERS = True
+if os.path.exists("/opt/we_are_in_docker"):
+    REBUILD_DOCKER = False
+    DELETE_ALL_BRENTHY_DOCKERS = False
 
 
 def test_preparations():
@@ -49,7 +53,7 @@ def test_preparations():
     # Load pre-created IdentityAccess objects for testing:
 
     # choose which identity_access to load
-    if os.path.exists("/opt/PriBlocks/we_are_in_docker"):
+    if os.path.exists("/opt/we_are_in_docker"):
         appdata_path = "/opt/PB_TestIdentity"
     else:
         appdata_path = tempfile.mkdtemp()
@@ -80,7 +84,8 @@ def test_preparations():
     except walytis_beta_api.BlockchainAlreadyExistsError:
         pass
 
-    pytest.identity_access = IdentityAccess.load_from_appdata(appdata_path, key)
+    pytest.identity_access = IdentityAccess.load_from_appdata(
+        appdata_path, key)
 
 
 def test_create_docker_containers():
@@ -92,6 +97,7 @@ def cleanup():
     for container in pytest.containers:
         container.delete()
 
+    pytest.identity_access.terminate()
     if pytest.identity_access:
         pytest.identity_access.delete()
     if pytest.pri_blockchain:
@@ -109,8 +115,48 @@ def test_add_block():
     )
     block = pytest.pri_blockchain.add_block(HELLO_THERE)
     mark(
-        pytest.pri_blockchain.get_blocks()[-1].block_content == block.block_content == HELLO_THERE,
+        pytest.pri_blockchain.get_blocks(
+        )[-1].block_content == block.block_content == HELLO_THERE,
         "Created private blockchain, added block"
+    )
+
+
+def test_block_synchronisation():
+    """Test that the previously created block is available in the container."""
+    python_code = '''
+import sys
+sys.path.append('/opt/PriBlocks')
+sys.path.append('/opt/PriBlocks/tests')
+from private_blockchain import PrivateBlockchain
+import test_block_sharing
+import walytis_beta_api
+from test_block_sharing import pytest
+print("About to run preparations...")
+test_block_sharing.test_preparations()
+print("About to create Private Blockchain...")
+pytest.pri_blockchain = PrivateBlockchain(
+    pytest.identity_access, walytis_beta_api.Blockchain, pytest.identity_access.person_did_manager.blockchain.blockchain_id
+)
+print("Created PrivateBlockchain.")
+block = pytest.pri_blockchain.add_block("Hello there!".encode())
+print(block.block_content)
+pytest.pri_blockchain.terminate()
+print("Terminated private blockchain.")
+pytest.identity_access.terminate()
+# test_block_sharing.cleanup()
+print("Finished cleanup.")
+import threading
+from time import sleep
+while len(threading.enumerate()) > 1:
+    print(threading.enumerate())
+    sleep(1)
+print(threading.enumerate())
+'''
+    output = pytest.containers[0].run_python_code(python_code)
+    # breakpoint()
+    mark(
+        HELLO_THERE.decode() in output,
+        "Synchronised block"
     )
 
 
@@ -120,8 +166,9 @@ def run_tests():
     test_create_docker_containers()
 
     test_add_block()
-    test_threads_cleanup()
+    test_block_synchronisation()
     cleanup()
+    test_threads_cleanup()
 
 
 if __name__ == "__main__":
