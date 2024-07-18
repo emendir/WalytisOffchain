@@ -110,9 +110,7 @@ HELLO_THERE = "Hello there!".encode()
 def test_add_block():
     """Test that we can create a PrivateBlockchain and add a block."""
     pytest.blockchain_id = walytis_beta_api.create_blockchain()
-    pytest.pri_blockchain = PrivateBlockchain(
-        pytest.identity_access, walytis_beta_api.Blockchain, pytest.blockchain_id
-    )
+    pytest.pri_blockchain = PrivateBlockchain(pytest.identity_access)
     block = pytest.pri_blockchain.add_block(HELLO_THERE)
     mark(
         pytest.pri_blockchain.get_blocks(
@@ -134,9 +132,7 @@ from test_block_sharing import pytest
 print("About to run preparations...")
 test_block_sharing.test_preparations()
 print("About to create Private Blockchain...")
-pytest.pri_blockchain = PrivateBlockchain(
-    pytest.identity_access, walytis_beta_api.Blockchain, pytest.identity_access.person_did_manager.blockchain.blockchain_id
-)
+pytest.pri_blockchain = PrivateBlockchain(pytest.identity_access)
 print("Created PrivateBlockchain.")
 block = pytest.pri_blockchain.add_block("Hello there!".encode())
 print(block.block_content)

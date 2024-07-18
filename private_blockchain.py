@@ -13,8 +13,7 @@ class PrivateBlockchain(blockstore.BlockStore):
     def __init__(
         self,
         identity: IdentityAccess,
-        base_blockchain_type,
-        blockchain_id: str,
+        content_blockchain: Blockchain | None = None,
         block_received_handler: Callable[[Block], None] | None = None,
         app_name: str = "",
         appdata_dir: str = "",
@@ -23,16 +22,28 @@ class PrivateBlockchain(blockstore.BlockStore):
         sequential_block_handling: bool = True,
         update_blockids_before_handling: bool = False,
     ):
+        """Initialise a PrivateBlockchain object.
+
+        Args:
+            identity: the object for managing this blockchain's members
+            content_blockchain: If specified, this blockchain is used for
+                    storing the PrivateBlocks (actual content is off-chain).
+                    If left `None`, `identity.person_did_manager.blockchain`
+                    is used instead.
+            block_received_handler: function to be called when a new
+                PrivateBlock is received
+            app_name:
+            appdata_dir:
+            auto_load_missed_blocks:
+            forget_appdata:
+            sequential_block_handling:
+            update_blockids_before_handling:
+        """
         self.identity = identity
-        # self.base_blockchain: Blockchain = base_blockchain_type(
-        #     blockchain_id=blockchain_id,
-        #     app_name=app_name,
-        #     block_received_handler=self._on_block_received,
-        #     auto_load_missed_blocks=auto_load_missed_blocks,
-        #     forget_appdata=forget_appdata,
-        #     sequential_block_handling=sequential_block_handling
-        # )
-        self.base_blockchain = self.identity.person_did_manager.blockchain
+        if content_blockchain:
+            self.base_blockchain = content_blockchain
+        else:
+            self.base_blockchain = self.identity.person_did_manager.blockchain
         self.block_received_handler = block_received_handler
 
         self.init_blockstore()
@@ -73,10 +84,12 @@ class PrivateBlockchain(blockstore.BlockStore):
         # create PriBlock object from block and private content
         # call user's eventhandler
         private_block = DataBlock(block, private_content, author)
-        self.block_received_handler(private_block)
+        if self.block_received_handler:
+            self.block_received_handler(private_block)
 
-    def ask_around_for_content(self, block: Block):
-        """
+    def ask_around_for_content(self, block: Block) -> DataBlock:
+        """Try to get a block's referred off-chain data from other peers.
+
         No Exceptions, while loop until content is found, unless we want to
         keep track of processed blocks ourselves
         instead of letting walytis_beta_api do.
@@ -113,12 +126,13 @@ class PrivateBlockchain(blockstore.BlockStore):
 
     def handle_content_request(self, conv_name: str, peer_id: str) -> None:
         conv = join_conversation(
-            conv_name+peer_id,
+            conv_name + peer_id,
             peer_id,
             conv_name,
         )
         block_id = conv.listen(timeout=COMMS_TIMEOUT_S)
-        private_content = self.identity.encrypt(self.get_block_content(block_id))
+        private_content = self.identity.encrypt(
+            self.get_block_content(block_id))
         conv.say(private_content, timeout_sec=COMMS_TIMEOUT_S)
         conv.close()
 
