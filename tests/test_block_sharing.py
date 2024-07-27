@@ -5,7 +5,7 @@ import tempfile
 
 import pytest
 import testing_utils
-import walytis_beta_api as walytis_beta_api
+import walytis_beta_api as waly
 from priblocks_docker.create_test_identity import (
     extract_tar_to_directory,
     key,
@@ -16,7 +16,7 @@ from priblocks_docker.priblocks_docker import (
 )
 from testing_utils import mark, test_threads_cleanup
 
-walytis_beta_api.log.PRINT_DEBUG = False
+waly.log.PRINT_DEBUG = False
 
 if True:
     sys.path.insert(0, os.path.join(
@@ -70,18 +70,18 @@ def test_preparations():
     with open(os.path.join(appdata_path, "person_id.json"), "r") as file:
         blockchains = json.loads(file.read())
     try:
-        walytis_beta_api.join_blockchain_from_zip(
+        waly.join_blockchain_from_zip(
             blockchains["member_blockchain"],
             os.path.join(appdata_path, "member_blockchain.zip")
         )
-    except walytis_beta_api.BlockchainAlreadyExistsError:
+    except waly.BlockchainAlreadyExistsError:
         pass
     try:
-        walytis_beta_api.join_blockchain_from_zip(
+        waly.join_blockchain_from_zip(
             blockchains["person_blockchain"],
             os.path.join(appdata_path, "person_blockchain.zip")
         )
-    except walytis_beta_api.BlockchainAlreadyExistsError:
+    except waly.BlockchainAlreadyExistsError:
         pass
 
     pytest.identity_access = IdentityAccess.load_from_appdata(
@@ -109,7 +109,7 @@ HELLO_THERE = "Hello there!".encode()
 
 def test_add_block():
     """Test that we can create a PrivateBlockchain and add a block."""
-    pytest.blockchain_id = walytis_beta_api.create_blockchain()
+    pytest.blockchain_id = waly.create_blockchain()
     pytest.pri_blockchain = PrivateBlockchain(pytest.identity_access)
     block = pytest.pri_blockchain.add_block(HELLO_THERE)
     mark(
@@ -127,7 +127,7 @@ sys.path.append('/opt/PriBlocks')
 sys.path.append('/opt/PriBlocks/tests')
 from private_blockchain import PrivateBlockchain
 import test_block_sharing
-import walytis_beta_api
+import waly
 from test_block_sharing import pytest
 print("About to run preparations...")
 test_block_sharing.test_preparations()
