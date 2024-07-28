@@ -1,11 +1,14 @@
 import json
 import os
-import sys
 import tempfile
 
+import _testing_utils
+import identity
+import private_blockchain
 import pytest
-import testing_utils
 import walytis_beta_api as waly
+from _testing_utils import mark, test_threads_cleanup
+from identity.identity import IdentityAccess
 from priblocks_docker.create_test_identity import (
     extract_tar_to_directory,
     key,
@@ -14,21 +17,18 @@ from priblocks_docker.priblocks_docker import (
     PriBlocksDocker,
     delete_containers,
 )
-from testing_utils import mark, test_threads_cleanup
+from private_blockchain import PrivateBlockchain
+
+_testing_utils.assert_is_loaded_from_source(
+    source_dir=os.path.dirname(os.path.dirname(__file__)), module=private_blockchain
+)
+_testing_utils.assert_is_loaded_from_source(
+    source_dir=os.path.join(os.path.abspath(__file__), "..", "..", "..", "WalytisAuth", "src"), module=identity
+)
 
 waly.log.PRINT_DEBUG = False
 
-if True:
-    sys.path.insert(0, os.path.join(
-        os.path.abspath(os.path.dirname(os.path.dirname(__file__))),
-    ))
-    sys.path.insert(0, os.path.join(
-        os.path.abspath(os.path.dirname(os.path.dirname(
-            __file__))), "..", "WalytisAuth", "src"
-    ))
-    from identity.identity import IdentityAccess
 
-    from private_blockchain import PrivateBlockchain
 REBUILD_DOCKER = True
 
 # automatically remove all docker containers after failed tests
@@ -109,6 +109,7 @@ HELLO_THERE = "Hello there!".encode()
 
 def test_add_block():
     """Test that we can create a PrivateBlockchain and add a block."""
+    print("Creating private blockchain...")
     pytest.blockchain_id = waly.create_blockchain()
     pytest.pri_blockchain = PrivateBlockchain(pytest.identity_access)
     block = pytest.pri_blockchain.add_block(HELLO_THERE)
@@ -123,11 +124,12 @@ def test_block_synchronisation():
     """Test that the previously created block is available in the container."""
     python_code = '''
 import sys
-sys.path.append('/opt/PriBlocks')
-sys.path.append('/opt/PriBlocks/tests')
+sys.path.insert(0, '/opt/WalytisAuth/src')
+sys.path.insert(0, '/opt/PriBlocks/src')
+sys.path.insert(0, '/opt/PriBlocks/tests')
 from private_blockchain import PrivateBlockchain
 import test_block_sharing
-import waly
+import walytis_beta_api as waly
 from test_block_sharing import pytest
 print("About to run preparations...")
 test_block_sharing.test_preparations()
@@ -168,6 +170,6 @@ def run_tests():
 
 
 if __name__ == "__main__":
-    testing_utils.PYTEST = False
-    testing_utils.BREAKPOINTS = True
+    _testing_utils.PYTEST = False
+    _testing_utils.BREAKPOINTS = True
     run_tests()
