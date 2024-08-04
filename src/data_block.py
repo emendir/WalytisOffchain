@@ -1,11 +1,14 @@
 import walytis_beta_api
 from walytis_beta_api.generic_blockchain import GenericBlock
+from identity.identity import IdentityAccess
 
 
 class DataBlock(GenericBlock):
-    def __init__(self, block, private_content, author=None):
+    content: bytes | bytearray = bytearray()
+
+    def __init__(self, block: GenericBlock, content: bytes | bytearray, author: IdentityAccess):
         self.base_block = block
-        self.private_content = private_content
+        self.content = content
         self.author = author
 
     @property
@@ -31,10 +34,6 @@ class DataBlock(GenericBlock):
     @property
     def topics(self):
         return self.base_block.topics
-
-    @property
-    def content(self):
-        return self.base_block.content
 
     @property
     def parents(self):

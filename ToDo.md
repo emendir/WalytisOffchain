@@ -1,1 +1,4 @@
 - replace DataBlock.author with WalAuth IdentityAccess
+- MutaBlockchain: ensure author is encoded along with signature in base_block
+- MutaBlockchain.ask_around_for_content: verify signature of private content
+- MutaBlockchain._on_block_received: ask around for private content on thread in background

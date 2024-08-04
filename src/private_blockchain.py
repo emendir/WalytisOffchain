@@ -72,8 +72,8 @@ class PrivateBlockchain(blockstore.BlockStore, GenericBlockchain):
     def add_block(
         self, content: bytes, topics: str | list[str] = []
     ) -> DataBlock:
-        private_content = self.identity.sign(content)
-        block = self.base_blockchain.add_block(private_content, topics)
+        signature = self.identity.sign(content)
+        block = self.base_blockchain.add_block(signature, topics)
         self.store_block_content(block.short_id, content)
         return DataBlock(block, content)
 
