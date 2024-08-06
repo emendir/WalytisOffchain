@@ -2,6 +2,7 @@ import walytis_beta_api
 from walytis_beta_api.generic_blockchain import GenericBlockchain, GenericBlock
 from typing import Callable
 from identity.identity import IdentityAccess
+from identity.did_manager import DidManager
 from ipfs_datatransmission import ConversationListener, join_conversation, start_conversation
 from data_block import DataBlock
 import data_block
@@ -14,10 +15,10 @@ class PrivateBlockchain(blockstore.BlockStore, GenericBlockchain):
 
     def __init__(
         self,
-        identity: IdentityAccess,
+        blockchain_identity: IdentityAccess,
+        member_identity: DidManager | None = None,
         base_blockchain: GenericBlockchain | None = None,
         block_received_handler: Callable[[GenericBlock], None] | None = None,
-        app_name: str = "",
         appdata_dir: str = "",
         auto_load_missed_blocks: bool = True,
         forget_appdata: bool = False,
@@ -27,25 +28,32 @@ class PrivateBlockchain(blockstore.BlockStore, GenericBlockchain):
         """Initialise a PrivateBlockchain object.
 
         Args:
-            identity: the object for managing this blockchain's members
-            base_blockchain: If specified, this blockchain is used for
-                    storing the PrivateBlocks (actual content is off-chain).
-                    If left `None`, `identity.person_did_manager.blockchain`
-                    is used instead.
+            blockchain_identity: the object for managing this blockchain's
+                    participants and authentication
+            member_identity: the object for authenticating blocks we create.
+                If `None`, `blockchain_identity.member_did_manager` is used.
+            base_blockchain: the blockchain to be used for storing the
+                PrivateBlocks (actual content is off-chain).
+                If `None`, `blockchain_identity.person_did_manager.blockchain`
+                is used instead.
             block_received_handler: function to be called when a new
                 PrivateBlock is received
-            app_name:
             appdata_dir:
             auto_load_missed_blocks:
             forget_appdata:
             sequential_block_handling:
             update_blockids_before_handling:
         """
-        self.identity = identity
+        self.blockchain_identity = blockchain_identity
         if base_blockchain:
             self.base_blockchain = base_blockchain
         else:
-            self.base_blockchain = self.identity.person_did_manager.blockchain
+            self.base_blockchain = (
+                self.blockchain_identity.person_did_manager.blockchain
+            )
+        if not member_identity:
+            member_identity = self.blockchain_identity.member_did_manager
+        self.member_identity = member_identity
         self.block_received_handler = block_received_handler
 
         self.init_blockstore()
@@ -72,10 +80,11 @@ class PrivateBlockchain(blockstore.BlockStore, GenericBlockchain):
     def add_block(
         self, content: bytes, topics: str | list[str] = []
     ) -> DataBlock:
-        signature = self.identity.sign(content)
-        block = self.base_blockchain.add_block(signature, topics)
+        signature = self.member_identity.sign(content)
+        block_content = self.member_identity.did.encode()+bytearray([0])+signature
+        block = self.base_blockchain.add_block(block_content, topics)
         self.store_block_content(block.short_id, content)
-        return DataBlock(block, content)
+        return DataBlock(block, content, author=self.member_identity)
 
     def _on_block_received(self, block: GenericBlock) -> None:
         # get and store private content
@@ -96,6 +105,11 @@ class PrivateBlockchain(blockstore.BlockStore, GenericBlockchain):
         keep track of processed blocks ourselves
         instead of letting walytis_beta_api do.
         """
+        signature = block.content[:i]
+        author_blockchain_id = block.content[i+1:]
+        if not author_blockchain_id in walytis_beta_api.list_blockchain_ids():
+            walytis_beta_api.join_blockchain(author_blockchain_id)
+        author = DidManager(author_blockchain_id)
         peers = self.base_blockchain.get_peers()
         # move block author to top of list
         peers.remove(block.creator_id)
@@ -112,10 +126,9 @@ class PrivateBlockchain(blockstore.BlockStore, GenericBlockchain):
                     )
                     response = conv.say(block.short_id, COMMS_TIMEOUT_S)
                     conv.close()
-
-                    author = self.identity.verify(response, block.content)
-                    if author:
-                        private_content = response
+                    decoded_response = self.blockchain_identity.decrypt(response)
+                    if author.verify(decoded_response, signature):
+                        private_content = decoded_response
                         break
                     else:
                         print(
@@ -124,7 +137,9 @@ class PrivateBlockchain(blockstore.BlockStore, GenericBlockchain):
                 print(error)
             # refresh list of peers
             peers = self.base_blockchain.get_peers()
-        return DataBlock(block, self.identity.decrypt(private_content), author)
+        i = block.content.index(bytearray([0]))
+
+        return DataBlock(block, private_content, author)
 
     def handle_content_request(self, conv_name: str, peer_id: str) -> None:
         conv = join_conversation(
@@ -133,17 +148,14 @@ class PrivateBlockchain(blockstore.BlockStore, GenericBlockchain):
             conv_name,
         )
         block_id = conv.listen(timeout=COMMS_TIMEOUT_S)
-        private_content = self.identity.encrypt(
-            self.get_block_content(block_id))
-        conv.say(private_content, timeout_sec=COMMS_TIMEOUT_S)
+        content = self.get_block_content(block_id)
+        if content:
+            private_content = self.blockchain_identity.encrypt(content)
+            conv.say(private_content, timeout_sec=COMMS_TIMEOUT_S)
         conv.close()
 
     def get_peers(self) -> list[str]:
         return self.base_blockchain.get_peers()
-
-    @property
-    def app_name(self):
-        return self.base_blockchain.app_name
 
     @property
     def block_ids(self):
@@ -157,19 +169,15 @@ class PrivateBlockchain(blockstore.BlockStore, GenericBlockchain):
     def get_block(self):
         return self.base_blockchain.get_block
 
-    @property
-    def name(self):
-        return self.base_blockchain.name
-
     def terminate(self) -> None:
-        self.identity.terminate()
+        self.blockchain_identity.terminate()
         self.base_blockchain.terminate()
         self.content_request_listener.terminate()
 
     def delete(self) -> None:
         self.terminate()
         try:
-            self.identity.delete()
+            self.blockchain_identity.delete()
         except walytis_beta_api.NoSuchBlockchainError:
             pass
         try:

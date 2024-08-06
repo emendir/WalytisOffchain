@@ -1,6 +1,5 @@
-import walytis_beta_api
-from walytis_beta_api.generic_blockchain import GenericBlock
 from identity.identity import IdentityAccess
+from walytis_beta_api.generic_blockchain import GenericBlock
 
 
 class DataBlock(GenericBlock):

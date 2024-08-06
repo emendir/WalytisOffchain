@@ -115,7 +115,7 @@ def test_add_block():
     block = pytest.pri_blockchain.add_block(HELLO_THERE)
     mark(
         pytest.pri_blockchain.get_blocks(
-        )[-1].private_content == block.private_content == HELLO_THERE,
+        )[-1].content == block.content == HELLO_THERE,
         "Created private blockchain, added block"
     )
 
@@ -137,7 +137,7 @@ print("About to create Private Blockchain...")
 pytest.pri_blockchain = PrivateBlockchain(pytest.identity_access)
 print("Created PrivateBlockchain.")
 block = pytest.pri_blockchain.add_block("Hello there!".encode())
-print(block.private_content)
+print(block.content)
 pytest.pri_blockchain.terminate()
 print("Terminated private blockchain.")
 pytest.identity_access.terminate()
