@@ -1,8 +1,8 @@
 import shutil
 import tarfile
 import os
-from identity.identity import IdentityAccess
-from identity.did_objects import Key
+from walidentity.identity_access import IdentityAccess
+from walidentity.did_objects import Key
 import tempfile
 from datetime import datetime
 config_dir_1 = tempfile.mkdtemp()

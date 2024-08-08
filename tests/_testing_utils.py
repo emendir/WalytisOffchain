@@ -12,9 +12,13 @@ sys.path.insert(0, os.path.join(
 ))
 sys.path.insert(0, os.path.join(
     os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
-    "..", "WalytisAuth", "src"
+    "..", "WalIdentity", "src"
 ))
 
+sys.path.insert(0, os.path.join(
+    os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+    "..", "PrivateBlocks", "src"
+))
 BREAKPOINTS = False
 PYTEST = True  # whether or not this script is being run by pytest
 

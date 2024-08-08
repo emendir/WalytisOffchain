@@ -1,4 +1,4 @@
-from identity.identity import IdentityAccess
+from walidentity.identity_access import IdentityAccess
 from walytis_beta_api.generic_blockchain import GenericBlock
 
 

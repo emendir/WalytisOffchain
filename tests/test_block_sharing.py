@@ -3,12 +3,11 @@ import os
 import tempfile
 
 import _testing_utils
-import identity
-import private_blockchain
+import private_blocks
 import pytest
+import walidentity
 import walytis_beta_api as waly
 from _testing_utils import mark, test_threads_cleanup
-from identity.identity import IdentityAccess
 from priblocks_docker.create_test_identity import (
     extract_tar_to_directory,
     key,
@@ -17,13 +16,14 @@ from priblocks_docker.priblocks_docker import (
     PriBlocksDocker,
     delete_containers,
 )
-from private_blockchain import PrivateBlockchain
+from private_blocks import PrivateBlockchain
+from walidentity.identity_access import IdentityAccess
 
 _testing_utils.assert_is_loaded_from_source(
-    source_dir=os.path.dirname(os.path.dirname(__file__)), module=private_blockchain
+    source_dir=os.path.dirname(os.path.dirname(__file__)), module=private_blocks
 )
 _testing_utils.assert_is_loaded_from_source(
-    source_dir=os.path.join(os.path.abspath(__file__), "..", "..", "..", "WalytisAuth", "src"), module=identity
+    source_dir=os.path.join(os.path.abspath(__file__), "..", "..", "..", "WalIdentity", "src"), module=walidentity
 )
 
 waly.log.PRINT_DEBUG = False
@@ -124,10 +124,10 @@ def test_block_synchronisation():
     """Test that the previously created block is available in the container."""
     python_code = '''
 import sys
-sys.path.insert(0, '/opt/WalytisAuth/src')
+sys.path.insert(0, '/opt/WalIdentity/src')
 sys.path.insert(0, '/opt/PriBlocks/src')
 sys.path.insert(0, '/opt/PriBlocks/tests')
-from private_blockchain import PrivateBlockchain
+from private_blocks import PrivateBlockchain
 import test_block_sharing
 import walytis_beta_api as waly
 from test_block_sharing import pytest

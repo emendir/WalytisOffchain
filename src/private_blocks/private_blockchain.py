@@ -1,12 +1,19 @@
-import walytis_beta_api
-from walytis_beta_api.generic_blockchain import GenericBlockchain, GenericBlock
 from typing import Callable
-from identity.identity import IdentityAccess
-from identity.did_manager import DidManager
-from ipfs_datatransmission import ConversationListener, join_conversation, start_conversation
-from data_block import DataBlock
-import data_block
-import blockstore
+
+import walytis_beta_api
+from ipfs_datatransmission import (
+    ConversationListener,
+    join_conversation,
+    start_conversation,
+)
+from walidentity.did_manager import DidManager
+from walidentity.identity_access import IdentityAccess
+from walytis_beta_api import decode_short_id
+from walytis_beta_api.generic_blockchain import GenericBlock, GenericBlockchain
+
+from . import blockstore
+from .data_block import DataBlock
+
 COMMS_TIMEOUT_S = 30
 
 
@@ -19,25 +26,33 @@ class PrivateBlockchain(blockstore.BlockStore, GenericBlockchain):
         member_identity: DidManager | None = None,
         base_blockchain: GenericBlockchain | None = None,
         block_received_handler: Callable[[GenericBlock], None] | None = None,
+        virtual_layer_name: str = "PrivateBlockchain",
+        other_blocks_handler: Callable[[GenericBlock], None] | None = None,
         appdata_dir: str = "",
         auto_load_missed_blocks: bool = True,
         forget_appdata: bool = False,
         sequential_block_handling: bool = True,
         update_blockids_before_handling: bool = False,
+
     ):
         """Initialise a PrivateBlockchain object.
 
         Args:
             blockchain_identity: the object for managing this blockchain's
-                    participants and authentication
+                participants, used for encryption in transmission of blocks'
+                off-chain content
             member_identity: the object for authenticating blocks we create.
                 If `None`, `blockchain_identity.member_did_manager` is used.
             base_blockchain: the blockchain to be used for storing the
                 PrivateBlocks (actual content is off-chain).
                 If `None`, `blockchain_identity.person_did_manager.blockchain`
                 is used instead.
-            block_received_handler: function to be called when a new
+            block_received_handler: eventhandler to be called when a new
                 PrivateBlock is received
+            virtual_layer_name: block-topic to identify blocks created by this
+                PrivateBlockchain among blocks created without it
+            other_blocks_handler: eventhandler to be called when blocks not
+                created by this PrivateBlockchain are received
             appdata_dir:
             auto_load_missed_blocks:
             forget_appdata:
@@ -55,7 +70,12 @@ class PrivateBlockchain(blockstore.BlockStore, GenericBlockchain):
             member_identity = self.blockchain_identity.member_did_manager
         self.member_identity = member_identity
         self.block_received_handler = block_received_handler
-
+        self.virtual_layer_name = virtual_layer_name
+        self.other_blocks_handler = other_blocks_handler
+        if not virtual_layer_name:
+            raise ValueError(
+                "`virtual_layer_name` cannot be empty!"
+            )
         self.init_blockstore()
         self.content_request_listener = ConversationListener(
             listener_name=f"PrivateBlocks{self.base_blockchain.blockchain_id}",
@@ -68,25 +88,29 @@ class PrivateBlockchain(blockstore.BlockStore, GenericBlockchain):
         block = self.base_blockchain.get_block(block_id)
         return DataBlock(block, content, author)
 
-    def get_block_ids(self) -> list[bytes | bytearray]:
-        return self.base_blockchain.block_ids
-
     def get_blocks(self) -> list[DataBlock]:
         return [
             self.load_block(block_id)
-            for block_id in self.base_blockchain.block_ids
+            for block_id in self.block_ids
         ]
 
     def add_block(
         self, content: bytes, topics: str | list[str] = []
     ) -> DataBlock:
+        if isinstance(topics, str):
+            topics = [topics]
         signature = self.member_identity.sign(content)
         block_content = self.member_identity.did.encode()+bytearray([0])+signature
+        if self.virtual_layer_name:
+            topics = [self.virtual_layer_name]+topics
         block = self.base_blockchain.add_block(block_content, topics)
         self.store_block_content(block.short_id, content)
         return DataBlock(block, content, author=self.member_identity)
 
     def _on_block_received(self, block: GenericBlock) -> None:
+        if self.virtual_layer_name not in block.topics:
+            self.other_blocks_handler(block)
+            return
         # get and store private content
         author, private_content = self.ask_around_for_content(
             block)  # block content is content_id
@@ -107,7 +131,7 @@ class PrivateBlockchain(blockstore.BlockStore, GenericBlockchain):
         """
         signature = block.content[:i]
         author_blockchain_id = block.content[i+1:]
-        if not author_blockchain_id in walytis_beta_api.list_blockchain_ids():
+        if author_blockchain_id not in walytis_beta_api.list_blockchain_ids():
             walytis_beta_api.join_blockchain(author_blockchain_id)
         author = DidManager(author_blockchain_id)
         peers = self.base_blockchain.get_peers()
@@ -159,15 +183,19 @@ class PrivateBlockchain(blockstore.BlockStore, GenericBlockchain):
 
     @property
     def block_ids(self):
-        return self.base_blockchain.block_ids
+        return [
+            block_id for block_id in self.base_blockchain.block_ids
+            if self.virtual_layer_name in decode_short_id(block_id)
+        ]
 
     @property
     def blockchain_id(self):
         return self.base_blockchain.blockchain_id
 
-    @property
-    def get_block(self):
-        return self.base_blockchain.get_block
+    def get_block(self, block_id: bytes | bytearray | int):
+        if isinstance(block_id, int):
+            block_id = self.block_ids[block_id]
+        return self.base_blockchain.get_block(block_id)
 
     def terminate(self) -> None:
         self.blockchain_identity.terminate()
