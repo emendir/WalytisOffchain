@@ -1,7 +1,7 @@
 import shutil
 import tarfile
 import os
-from walidentity.identity_access import IdentityAccess
+from walidentity.group_did_manager import GroupDidManager
 from walidentity.did_objects import Key
 import tempfile
 from datetime import datetime
@@ -53,39 +53,37 @@ def extract_tar_to_directory(tar_path, dest_dir):
 
 
 def run():
-    identity_access_1 = IdentityAccess.create(config_dir_1, key)
-    invitation = identity_access_1.invite_member()
-    identity_access_2 = IdentityAccess.join(invitation, config_dir_2, key)
-    identity_access_2.person_did_manager.unlock(
-        identity_access_1.person_did_manager.get_control_key().private_key
+    group_did_manager_1 = GroupDidManager.create(config_dir_1, key)
+    invitation = group_did_manager_1.invite_member()
+    group_did_manager_2 = GroupDidManager.join(invitation, config_dir_2, key)
+    group_did_manager_2.unlock(
+        group_did_manager_1.get_control_key().private_key
     )
     print("Unlocked PersonIdentity on joined access.")
 
     shutil.copy(
-        identity_access_1.person_did_manager.blockchain.get_blockchain_data(),
+        group_did_manager_1.blockchain.get_blockchain_data(),
         os.path.join(config_dir_1, "person_blockchain.zip")
     )
     shutil.copy(
-        identity_access_1.member_did_manager.blockchain.get_blockchain_data(),
+        group_did_manager_1.member_did_manager.blockchain.get_blockchain_data(),
         os.path.join(config_dir_1, "member_blockchain.zip")
     )
 
     shutil.copy(
-        identity_access_2.person_did_manager.blockchain.get_blockchain_data(),
+        group_did_manager_2.blockchain.get_blockchain_data(),
         os.path.join(config_dir_2, "person_blockchain.zip")
     )
     shutil.copy(
-        identity_access_2.member_did_manager.blockchain.get_blockchain_data(),
+        group_did_manager_2.member_did_manager.blockchain.get_blockchain_data(),
         os.path.join(config_dir_2, "member_blockchain.zip")
     )
-
+    group_did_manager_1.terminate()
+    group_did_manager_2.terminate()
     # Create the tar file
-    create_tar_from_directory(config_dir_1, "identity_access_1.tar")
-    create_tar_from_directory(config_dir_2, "identity_access_2.tar")
+    create_tar_from_directory(config_dir_1, "group_did_manager_1.tar")
+    create_tar_from_directory(config_dir_2, "group_did_manager_2.tar")
     print("Created appdata tar files.")
-
-    identity_access_1.terminate()
-    identity_access_2.terminate()
 
 
 if __name__ == "__main__":

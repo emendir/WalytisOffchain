@@ -7,7 +7,7 @@ from ipfs_datatransmission import (
     start_conversation,
 )
 from walidentity.did_manager import DidManager
-from walidentity.identity_access import IdentityAccess
+from walidentity.group_did_manager import GroupDidManager
 from walytis_beta_api import decode_short_id
 from walytis_beta_api.generic_blockchain import GenericBlock, GenericBlockchain
 
@@ -22,7 +22,7 @@ class PrivateBlockchain(blockstore.BlockStore, GenericBlockchain):
 
     def __init__(
         self,
-        blockchain_identity: IdentityAccess,
+        blockchain_identity: GroupDidManager,
         member_identity: DidManager | None = None,
         base_blockchain: GenericBlockchain | None = None,
         block_received_handler: Callable[[GenericBlock], None] | None = None,
@@ -45,7 +45,7 @@ class PrivateBlockchain(blockstore.BlockStore, GenericBlockchain):
                 If `None`, `blockchain_identity.member_did_manager` is used.
             base_blockchain: the blockchain to be used for storing the
                 PrivateBlocks (actual content is off-chain).
-                If `None`, `blockchain_identity.person_did_manager.blockchain`
+                If `None`, `blockchain_identity.blockchain`
                 is used instead.
             block_received_handler: eventhandler to be called when a new
                 PrivateBlock is received
@@ -64,7 +64,7 @@ class PrivateBlockchain(blockstore.BlockStore, GenericBlockchain):
             self.base_blockchain = base_blockchain
         else:
             self.base_blockchain = (
-                self.blockchain_identity.person_did_manager.blockchain
+                self.blockchain_identity.blockchain
             )
         if not member_identity:
             member_identity = self.blockchain_identity.member_did_manager
@@ -185,7 +185,7 @@ class PrivateBlockchain(blockstore.BlockStore, GenericBlockchain):
     def block_ids(self):
         return [
             block_id for block_id in self.base_blockchain.block_ids
-            if self.virtual_layer_name in decode_short_id(block_id)
+            if self.virtual_layer_name in decode_short_id(block_id)["topics"]
         ]
 
     @property

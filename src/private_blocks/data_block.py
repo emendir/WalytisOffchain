@@ -1,11 +1,11 @@
-from walidentity.identity_access import IdentityAccess
+from walidentity.group_did_manager import GroupDidManager
 from walytis_beta_api.generic_blockchain import GenericBlock
 
 
 class DataBlock(GenericBlock):
     content: bytes | bytearray = bytearray()
 
-    def __init__(self, block: GenericBlock, content: bytes | bytearray, author: IdentityAccess):
+    def __init__(self, block: GenericBlock, content: bytes | bytearray, author: GroupDidManager):
         self.base_block = block
         self.content = content
         self.author = author

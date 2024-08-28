@@ -17,7 +17,7 @@ from priblocks_docker.priblocks_docker import (
     delete_containers,
 )
 from private_blocks import PrivateBlockchain
-from walidentity.identity_access import IdentityAccess
+from walidentity.group_did_manager import GroupDidManager
 
 _testing_utils.assert_is_loaded_from_source(
     source_dir=os.path.dirname(os.path.dirname(__file__)), module=private_blocks
@@ -46,13 +46,13 @@ def test_preparations():
         from priblocks_docker.build_docker import build_docker_image
 
         build_docker_image(verbose=False)
-    pytest.identity_access = None
+    pytest.group_did_manager = None
     pytest.pri_blockchain = None
     pytest.containers: list[PriBlocksDocker] = []
 
-    # Load pre-created IdentityAccess objects for testing:
+    # Load pre-created GroupDidManager objects for testing:
 
-    # choose which identity_access to load
+    # choose which group_did_manager to load
     if os.path.exists("/opt/we_are_in_docker"):
         appdata_path = "/opt/PB_TestIdentity"
     else:
@@ -61,13 +61,13 @@ def test_preparations():
             os.path.join(
                 os.path.dirname(__file__),
                 "priblocks_docker",
-                "identity_access_2.tar"
+                "group_did_manager_2.tar"
             ),
             appdata_path
         )
 
-    # join the identity_access' blockchains
-    with open(os.path.join(appdata_path, "person_id.json"), "r") as file:
+    # join the group_did_manager' blockchains
+    with open(os.path.join(appdata_path, "group_did_metadata.json"), "r") as file:
         blockchains = json.loads(file.read())
     try:
         waly.join_blockchain_from_zip(
@@ -84,8 +84,7 @@ def test_preparations():
     except waly.BlockchainAlreadyExistsError:
         pass
 
-    pytest.identity_access = IdentityAccess.load_from_appdata(
-        appdata_path, key)
+    pytest.group_did_manager = GroupDidManager(appdata_path, key)
 
 
 def test_create_docker_containers():
@@ -97,9 +96,9 @@ def cleanup():
     for container in pytest.containers:
         container.delete()
 
-    pytest.identity_access.terminate()
-    if pytest.identity_access:
-        pytest.identity_access.delete()
+    pytest.group_did_manager.terminate()
+    if pytest.group_did_manager:
+        pytest.group_did_manager.delete()
     if pytest.pri_blockchain:
         pytest.pri_blockchain.delete()
 
@@ -111,11 +110,12 @@ def test_add_block():
     """Test that we can create a PrivateBlockchain and add a block."""
     print("Creating private blockchain...")
     pytest.blockchain_id = waly.create_blockchain()
-    pytest.pri_blockchain = PrivateBlockchain(pytest.identity_access)
+    pytest.pri_blockchain = PrivateBlockchain(pytest.group_did_manager)
     block = pytest.pri_blockchain.add_block(HELLO_THERE)
+    blockchain_blocks = pytest.pri_blockchain.get_blocks()
     mark(
-        pytest.pri_blockchain.get_blocks(
-        )[-1].content == block.content == HELLO_THERE,
+        blockchain_blocks and
+        blockchain_blocks[-1].content == block.content == HELLO_THERE,
         "Created private blockchain, added block"
     )
 
@@ -134,13 +134,13 @@ from test_block_sharing import pytest
 print("About to run preparations...")
 test_block_sharing.test_preparations()
 print("About to create Private Blockchain...")
-pytest.pri_blockchain = PrivateBlockchain(pytest.identity_access)
+pytest.pri_blockchain = PrivateBlockchain(pytest.group_did_manager)
 print("Created PrivateBlockchain.")
 block = pytest.pri_blockchain.add_block("Hello there!".encode())
 print(block.content)
 pytest.pri_blockchain.terminate()
 print("Terminated private blockchain.")
-pytest.identity_access.terminate()
+pytest.group_did_manager.terminate()
 # test_block_sharing.cleanup()
 print("Finished cleanup.")
 import threading
