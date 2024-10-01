@@ -32,7 +32,7 @@ class DataBlock(GenericBlock):
 
     @property
     def topics(self):
-        return self.base_block.topics
+        return self.base_block.topics[1:]
 
     @property
     def parents(self):

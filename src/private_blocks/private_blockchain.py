@@ -13,7 +13,7 @@ from walytis_beta_api.generic_blockchain import GenericBlock, GenericBlockchain
 
 from . import blockstore
 from .data_block import DataBlock
-
+# from loguru import logger
 COMMS_TIMEOUT_S = 30
 
 
@@ -59,6 +59,8 @@ class PrivateBlockchain(blockstore.BlockStore, GenericBlockchain):
             sequential_block_handling:
             update_blockids_before_handling:
         """
+        # logger.info(f"PB: Initialising Private Blockchain: {virtual_layer_name}")
+
         self.blockchain_identity = blockchain_identity
         if base_blockchain:
             self.base_blockchain = base_blockchain
@@ -109,8 +111,11 @@ class PrivateBlockchain(blockstore.BlockStore, GenericBlockchain):
 
     def _on_block_received(self, block: GenericBlock) -> None:
         if self.virtual_layer_name not in block.topics:
-            self.other_blocks_handler(block)
+            # logger.info(f"PB: Passing on block: {block.topics}")
+            if self.other_blocks_handler:
+                self.other_blocks_handler(block)
             return
+        # logger.info(f"PB: Processing block: {block.topics}")
         # get and store private content
         author, private_content = self.ask_around_for_content(
             block)  # block content is content_id
@@ -195,7 +200,7 @@ class PrivateBlockchain(blockstore.BlockStore, GenericBlockchain):
     def get_block(self, block_id: bytes | bytearray | int):
         if isinstance(block_id, int):
             block_id = self.block_ids[block_id]
-        return self.base_blockchain.get_block(block_id)
+        return self.load_block(block_id)
 
     def terminate(self) -> None:
         self.blockchain_identity.terminate()
