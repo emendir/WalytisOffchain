@@ -149,7 +149,7 @@ class PrivateBlockchain(blockstore.BlockStore, GenericBlockchain):
             try:
                 for peer in peers:
                     conv = start_conversation(
-                        f"PrivateBlocks:ContentRequest:{block.ipfs_cid}",
+                        f"PrivateBlocks: ContentRequest: {block.ipfs_cid}",
                         peer,
                         self.content_request_listener._listener_name
                     )
