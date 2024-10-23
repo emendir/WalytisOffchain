@@ -12,7 +12,7 @@ from walytis_beta_api import decode_short_id
 from walytis_beta_api.generic_blockchain import GenericBlock, GenericBlockchain
 
 from . import blockstore
-from .data_block import DataBlock
+from .data_block import DataBlock, DataBlocksList
 # from loguru import logger
 COMMS_TIMEOUT_S = 30
 
@@ -59,8 +59,6 @@ class PrivateBlockchain(blockstore.BlockStore, GenericBlockchain):
             sequential_block_handling:
             update_blockids_before_handling:
         """
-        # logger.info(f"PB: Initialising Private Blockchain: {virtual_layer_name}")
-
         self.blockchain_identity = blockchain_identity
         if base_blockchain:
             self.base_blockchain = base_blockchain
@@ -70,9 +68,15 @@ class PrivateBlockchain(blockstore.BlockStore, GenericBlockchain):
             )
         if not member_identity:
             member_identity = self.blockchain_identity.member_did_manager
-        self.member_identity = member_identity
-        self.block_received_handler = block_received_handler
+            self.member_identity = member_identity
         self.virtual_layer_name = virtual_layer_name
+        # logger.info(f"PB: Initialising Private Blockchain: {virtual_layer_name}")
+        block_ids = [
+            block_id for block_id in self.base_blockchain._blocks
+            if self.virtual_layer_name in decode_short_id(block_id)["topics"]
+        ]
+        self._blocks = DataBlocksList.from_block_ids(block_ids, self, DataBlock)
+        self.block_received_handler = block_received_handler
         self.other_blocks_handler = other_blocks_handler
         if not virtual_layer_name:
             raise ValueError(
@@ -90,11 +94,19 @@ class PrivateBlockchain(blockstore.BlockStore, GenericBlockchain):
         block = self.base_blockchain.get_block(block_id)
         return DataBlock(block, content, author)
 
+    def get_block(self, block_id: bytearray | bytes | int) -> DataBlock:
+        if isinstance(block_id, int):
+            block_id = self.get_block_ids()[block_id]
+        return self._blocks.get_block(block_id)
+
+    def get_num_blocks(self) -> int:
+        return len(self._blocks)
+
     def get_blocks(self) -> list[DataBlock]:
-        return [
-            self.load_block(block_id)
-            for block_id in self.block_ids
-        ]
+        return self._blocks.get_blocks()
+
+    def get_block_ids(self) -> list[bytes]:
+        return self._blocks.get_long_ids()
 
     def add_block(
         self, content: bytes, topics: str | list[str] = []
@@ -105,9 +117,13 @@ class PrivateBlockchain(blockstore.BlockStore, GenericBlockchain):
         block_content = self.member_identity.did.encode()+bytearray([0])+signature
         if self.virtual_layer_name:
             topics = [self.virtual_layer_name]+topics
-        block = self.base_blockchain.add_block(block_content, topics)
-        self.store_block_content(block.short_id, content)
-        return DataBlock(block, content, author=self.member_identity)
+        base_block = self.base_blockchain.add_block(block_content, topics)
+        block = DataBlock(base_block, content, author=self.member_identity)
+        self.store_block_content(block.long_id, content)
+        self.store_block_author(block.long_id, self.member_identity.did)
+        self._blocks.add_block(block)
+
+        return block
 
     def _on_block_received(self, block: GenericBlock) -> None:
         if self.virtual_layer_name not in block.topics:
@@ -117,13 +133,17 @@ class PrivateBlockchain(blockstore.BlockStore, GenericBlockchain):
             return
         # logger.info(f"PB: Processing block: {block.topics}")
         # get and store private content
-        author, private_content = self.ask_around_for_content(
-            block)  # block content is content_id
-        self.store_block_content(block.short_id, private_content)
-        self.store_block_author(block.short_id, author)
+        author = self.get_block_author(block.long_id)
+        private_content = self.get_block_content(block.long_id)
+        if not author or not private_content:
+            author, private_content = self.ask_around_for_content(
+                block)  # block content is content_id
+            self.store_block_content(block.long_id, private_content)
+            self.store_block_author(block.long_id, author)
         # create PriBlock object from block and private content
         # call user's eventhandler
         private_block = DataBlock(block, private_content, author)
+        self._blocks.add_block(private_block)
         if self.block_received_handler:
             self.block_received_handler(private_block)
 
@@ -134,8 +154,9 @@ class PrivateBlockchain(blockstore.BlockStore, GenericBlockchain):
         keep track of processed blocks ourselves
         instead of letting walytis_beta_api do.
         """
-        signature = block.content[:i]
-        author_blockchain_id = block.content[i+1:]
+        i = block.content.index(bytearray([0]))
+        author_blockchain_id = block.content[:i].decode()
+        signature = block.content[i+1:]
         if author_blockchain_id not in walytis_beta_api.list_blockchain_ids():
             walytis_beta_api.join_blockchain(author_blockchain_id)
         author = DidManager(author_blockchain_id)
@@ -153,7 +174,7 @@ class PrivateBlockchain(blockstore.BlockStore, GenericBlockchain):
                         peer,
                         self.content_request_listener._listener_name
                     )
-                    response = conv.say(block.short_id, COMMS_TIMEOUT_S)
+                    response = conv.say(block.long_id, COMMS_TIMEOUT_S)
                     conv.close()
                     decoded_response = self.blockchain_identity.decrypt(response)
                     if author.verify(decoded_response, signature):
@@ -187,20 +208,8 @@ class PrivateBlockchain(blockstore.BlockStore, GenericBlockchain):
         return self.base_blockchain.get_peers()
 
     @property
-    def block_ids(self):
-        return [
-            block_id for block_id in self.base_blockchain.block_ids
-            if self.virtual_layer_name in decode_short_id(block_id)["topics"]
-        ]
-
-    @property
     def blockchain_id(self):
         return self.base_blockchain.blockchain_id
-
-    def get_block(self, block_id: bytes | bytearray | int):
-        if isinstance(block_id, int):
-            block_id = self.block_ids[block_id]
-        return self.load_block(block_id)
 
     def terminate(self) -> None:
         self.blockchain_identity.terminate()

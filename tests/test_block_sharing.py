@@ -112,7 +112,7 @@ def test_add_block():
     pytest.blockchain_id = waly.create_blockchain()
     pytest.pri_blockchain = PrivateBlockchain(pytest.group_did_manager)
     block = pytest.pri_blockchain.add_block(HELLO_THERE)
-    blockchain_blocks = pytest.pri_blockchain.get_blocks()
+    blockchain_blocks = list(pytest.pri_blockchain.get_blocks())
     mark(
         blockchain_blocks and
         blockchain_blocks[-1].content == block.content == HELLO_THERE,
@@ -159,7 +159,7 @@ print(threading.enumerate())
 
 
 def run_tests():
-    print("\nRunning tests for Key Sharing:")
+    print("\nRunning tests for Prviate Block Sharing:")
     test_preparations()
     test_create_docker_containers()
 

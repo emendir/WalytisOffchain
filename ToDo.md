@@ -1,1 +1,2 @@
 - MutaBlockchain._on_block_received: ask around for private content on thread in background
+- MutaBlockchain.ask_around_for_content: test and debug

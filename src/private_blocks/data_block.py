@@ -1,14 +1,31 @@
+from __future__ import annotations
+
+from typing import Type, TypeVar
+
 from walidentity.group_did_manager import GroupDidManager
+from walytis_beta_api import BlockNotFoundError, BlocksList
 from walytis_beta_api.generic_blockchain import GenericBlock
+
+from walytis_beta_api.generic_blockchain import GenericBlockchain
 
 
 class DataBlock(GenericBlock):
     content: bytes | bytearray = bytearray()
 
-    def __init__(self, block: GenericBlock, content: bytes | bytearray, author: GroupDidManager):
+    def __init__(
+        self, block: GenericBlock,
+        content: bytes | bytearray,
+        author: GroupDidManager
+    ):
         self.base_block = block
         self.content = content
         self.author = author
+
+    @staticmethod
+    def from_id(
+        block_id: bytearray, blockchain: GenericBlockchain
+    ) -> 'DataBlock':
+        return blockchain.load_block(block_id)
 
     @property
     def ipfs_cid(self):
@@ -41,3 +58,56 @@ class DataBlock(GenericBlock):
     @property
     def file_data(self):
         return self.base_block.file_data
+
+
+# a type variable restricted to subclasses of Block
+BlockType = TypeVar('BlockType', bound=DataBlock)
+
+
+class DataBlocksList(BlocksList[BlockType]):
+    def __init__(self, blockchain: GenericBlockchain, block_class: Type[BlockType] = DataBlock):
+        BlocksList.__init__(self, block_class)
+        self.blockchain = blockchain
+
+    @classmethod
+    def from_block_ids(
+        cls: Type['BlocksList[BlockType]'],
+        block_ids: list[bytes],
+        blockchain: GenericBlockchain,
+        block_class: Type[BlockType] = DataBlock
+    ) -> 'BlocksList[BlockType]':
+
+        if block_ids and bytearray([0, 0, 0, 0]) not in bytearray(block_ids[0]):
+            print(block_ids[0])
+            raise ValueError(
+                "It looks like you passed an short ID or invalid ID as a parameter.")
+        if block_ids and isinstance(block_ids[0], bytearray):
+            block_ids = [bytes(block_id) for block_id in block_ids]
+        # Use dict.fromkeys() to create the dictionary efficiently
+        blocks_dict = dict.fromkeys(block_ids, None)
+
+        # Cast the dictionary to an instance of BlocksList
+        blocks_list = cls.__new__(cls)  # Create an uninitialized instance of the class
+
+        # Manually initialize the dictionary part with the data
+        blocks_list.update(blocks_dict)
+
+        # Manually set the block_class
+        blocks_list.block_class = block_class
+        blocks_list.blockchain = blockchain
+
+        return blocks_list
+
+    def __getitem__(self,  block_id: bytes) -> BlockType:
+        try:
+            block: BlockType = dict.__getitem__(self, block_id)
+        except KeyError:
+            if bytearray([0, 0, 0, 0]) not in block_id:
+                raise ValueError(
+                    "It looks like you passed an short ID or invalid ID as a parameter.")
+            else:
+                raise BlockNotFoundError()
+        if not block:
+            block = self.block_class.from_id(bytearray(block_id), self.blockchain)
+            dict.__setitem__(self, block_id, block)
+        return block
