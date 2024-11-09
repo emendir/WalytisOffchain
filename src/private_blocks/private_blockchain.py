@@ -9,7 +9,7 @@ from ipfs_datatransmission import (
 from walidentity.did_manager import DidManager
 from walidentity.group_did_manager import GroupDidManager
 from walytis_beta_api import decode_short_id
-from walytis_beta_api.generic_blockchain import GenericBlock, GenericBlockchain
+from walytis_beta_api._experimental.generic_blockchain import GenericBlock, GenericBlockchain
 
 from . import blockstore
 from .data_block import DataBlock, DataBlocksList

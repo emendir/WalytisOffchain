@@ -3,7 +3,6 @@ WORKDIR /opt/PriBlocks
 COPY . /opt/PriBlocks
 
 RUN mkdir /opt/PB_TestIdentity
-RUN tar -xzf /opt/PriBlocks/tests/priblocks_docker/group_did_manager_1.tar -C /opt/PB_TestIdentity
 
 # RUN pip install --break-system-packages --root-user-action ignore --no-dependencies /opt/PriBlocks/
 

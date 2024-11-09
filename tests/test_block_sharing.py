@@ -1,6 +1,4 @@
-import json
 import os
-import tempfile
 
 import _testing_utils
 import private_blocks
@@ -8,23 +6,26 @@ import pytest
 import walidentity
 import walytis_beta_api as waly
 from _testing_utils import mark, test_threads_cleanup
-from priblocks_docker.create_test_identity import (
-    extract_tar_to_directory,
-    key,
+from prebuilt_group_did_managers import (
+    load_did_manager,
 )
 from priblocks_docker.priblocks_docker import (
     PriBlocksDocker,
     delete_containers,
 )
 from private_blocks import PrivateBlockchain
-from walidentity.group_did_manager import GroupDidManager
 
 _testing_utils.assert_is_loaded_from_source(
-    source_dir=os.path.dirname(os.path.dirname(__file__)), module=private_blocks
+    source_dir=os.path.dirname(os.path.dirname(__file__)),
+    module=private_blocks
 )
 _testing_utils.assert_is_loaded_from_source(
-    source_dir=os.path.join(os.path.abspath(__file__), "..", "..", "..", "WalIdentity", "src"), module=walidentity
+    source_dir=os.path.join(
+        os.path.abspath(__file__), "..", "..", "..", "WalIdentity", "src"
+    ),
+    module=walidentity
 )
+
 
 waly.log.PRINT_DEBUG = False
 
@@ -54,37 +55,13 @@ def test_preparations():
 
     # choose which group_did_manager to load
     if os.path.exists("/opt/we_are_in_docker"):
-        appdata_path = "/opt/PB_TestIdentity"
+        tarfile = "group_did_manager_1.tar"
     else:
-        appdata_path = tempfile.mkdtemp()
-        extract_tar_to_directory(
-            os.path.join(
-                os.path.dirname(__file__),
-                "priblocks_docker",
-                "group_did_manager_2.tar"
-            ),
-            appdata_path
-        )
-
-    # join the group_did_manager' blockchains
-    with open(os.path.join(appdata_path, "group_did_metadata.json"), "r") as file:
-        blockchains = json.loads(file.read())
-    try:
-        waly.join_blockchain_from_zip(
-            blockchains["member_blockchain"],
-            os.path.join(appdata_path, "member_blockchain.zip")
-        )
-    except waly.BlockchainAlreadyExistsError:
-        pass
-    try:
-        waly.join_blockchain_from_zip(
-            blockchains["person_blockchain"],
-            os.path.join(appdata_path, "person_blockchain.zip")
-        )
-    except waly.BlockchainAlreadyExistsError:
-        pass
-
-    pytest.group_did_manager = GroupDidManager(appdata_path, key)
+        tarfile = "group_did_manager_2.tar"
+    pytest.group_did_manager = load_did_manager(os.path.join(
+        os.path.dirname(__file__),
+        tarfile
+    ))
 
 
 def test_create_docker_containers():
@@ -150,7 +127,8 @@ while len(threading.enumerate()) > 1:
     sleep(1)
 print(threading.enumerate())
 '''
-    output = pytest.containers[0].run_python_code(python_code)
+    output = pytest.containers[0].run_python_code(
+        python_code, print_output=True)
     # breakpoint()
     mark(
         HELLO_THERE.decode() in output,
