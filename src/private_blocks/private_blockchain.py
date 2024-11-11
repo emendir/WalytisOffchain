@@ -22,8 +22,7 @@ class PrivateBlockchain(blockstore.BlockStore, GenericBlockchain):
 
     def __init__(
         self,
-        blockchain_identity: GroupDidManager,
-        member_identity: DidManager | None = None,
+        group_blockchain: GroupDidManager,
         base_blockchain: GenericBlockchain | None = None,
         block_received_handler: Callable[[GenericBlock], None] | None = None,
         virtual_layer_name: str = "PrivateBlockchain",
@@ -38,14 +37,12 @@ class PrivateBlockchain(blockstore.BlockStore, GenericBlockchain):
         """Initialise a PrivateBlockchain object.
 
         Args:
-            blockchain_identity: the object for managing this blockchain's
+            group_blockchain: the object for managing this blockchain's
                 participants, used for encryption in transmission of blocks'
                 off-chain content
-            member_identity: the object for authenticating blocks we create.
-                If `None`, `blockchain_identity.member_did_manager` is used.
             base_blockchain: the blockchain to be used for storing the
                 PrivateBlocks (actual content is off-chain).
-                If `None`, `blockchain_identity.blockchain`
+                If `None`, `group_blockchain.blockchain`
                 is used instead.
             block_received_handler: eventhandler to be called when a new
                 PrivateBlock is received
@@ -59,23 +56,20 @@ class PrivateBlockchain(blockstore.BlockStore, GenericBlockchain):
             sequential_block_handling:
             update_blockids_before_handling:
         """
-        self.blockchain_identity = blockchain_identity
+        self.group_blockchain = group_blockchain
         if base_blockchain:
             self.base_blockchain = base_blockchain
         else:
-            self.base_blockchain = (
-                self.blockchain_identity.blockchain
-            )
-        if not member_identity:
-            member_identity = self.blockchain_identity.member_did_manager
-            self.member_identity = member_identity
+            self.base_blockchain = self.group_blockchain.blockchain
+
         self.virtual_layer_name = virtual_layer_name
         # logger.info(f"PB: Initialising Private Blockchain: {virtual_layer_name}")
-        block_ids = [
-            block_id for block_id in self.base_blockchain._blocks
-            if self.virtual_layer_name in decode_short_id(block_id)["topics"]
+
+        blocks = [
+            block for block in self.base_blockchain.get_blocks()
+            if self.virtual_layer_name in block.topics
         ]
-        self._blocks = DataBlocksList.from_block_ids(block_ids, self, DataBlock)
+        self._blocks = DataBlocksList.from_blocks(blocks, self, DataBlock)
         self.block_received_handler = block_received_handler
         self.other_blocks_handler = other_blocks_handler
         if not virtual_layer_name:
@@ -88,10 +82,11 @@ class PrivateBlockchain(blockstore.BlockStore, GenericBlockchain):
             eventhandler=self.handle_content_request
         )
 
-    def load_block(self, block_id: bytes) -> DataBlock:
-        content = self.get_block_content(block_id)
-        author = self.get_block_author(block_id)
-        block = self.base_blockchain.get_block(block_id)
+    def load_block(self, block: bytes | GenericBlock) -> DataBlock:
+        if isinstance(block, bytes | bytearray):
+            block = self.base_blockchain.get_block(block)
+        content = self.get_block_content(block.long_id)
+        author = self.get_block_author(block.long_id)
         return DataBlock(block, content, author)
 
     def get_block(self, block_id: bytearray | bytes | int) -> DataBlock:
@@ -113,14 +108,14 @@ class PrivateBlockchain(blockstore.BlockStore, GenericBlockchain):
     ) -> DataBlock:
         if isinstance(topics, str):
             topics = [topics]
-        signature = self.member_identity.sign(content)
-        block_content = self.member_identity.did.encode()+bytearray([0])+signature
+        signature = self.group_blockchain.sign(content)
+        block_content = self.group_blockchain.did.encode()+bytearray([0])+signature
         if self.virtual_layer_name:
             topics = [self.virtual_layer_name]+topics
         base_block = self.base_blockchain.add_block(block_content, topics)
-        block = DataBlock(base_block, content, author=self.member_identity)
+        block = DataBlock(base_block, content, author=self.group_blockchain)
         self.store_block_content(block.long_id, content)
-        self.store_block_author(block.long_id, self.member_identity.did)
+        self.store_block_author(block.long_id, self.group_blockchain.did)
         self._blocks.add_block(block)
 
         return block
@@ -156,7 +151,7 @@ class PrivateBlockchain(blockstore.BlockStore, GenericBlockchain):
         """
         i = block.content.index(bytearray([0]))
         author_blockchain_id = block.content[:i].decode()
-        signature = block.content[i+1:]
+        signature = block.content[i + 1:]
         if author_blockchain_id not in walytis_beta_api.list_blockchain_ids():
             walytis_beta_api.join_blockchain(author_blockchain_id)
         author = DidManager(author_blockchain_id)
@@ -176,7 +171,7 @@ class PrivateBlockchain(blockstore.BlockStore, GenericBlockchain):
                     )
                     response = conv.say(block.long_id, COMMS_TIMEOUT_S)
                     conv.close()
-                    decoded_response = self.blockchain_identity.decrypt(response)
+                    decoded_response = self.group_blockchain.decrypt(response)
                     if author.verify(decoded_response, signature):
                         private_content = decoded_response
                         break
@@ -200,7 +195,7 @@ class PrivateBlockchain(blockstore.BlockStore, GenericBlockchain):
         block_id = conv.listen(timeout=COMMS_TIMEOUT_S)
         content = self.get_block_content(block_id)
         if content:
-            private_content = self.blockchain_identity.encrypt(content)
+            private_content = self.group_blockchain.encrypt(content)
             conv.say(private_content, timeout_sec=COMMS_TIMEOUT_S)
         conv.close()
 
@@ -212,14 +207,14 @@ class PrivateBlockchain(blockstore.BlockStore, GenericBlockchain):
         return self.base_blockchain.blockchain_id
 
     def terminate(self) -> None:
-        self.blockchain_identity.terminate()
+        self.group_blockchain.terminate()
         self.base_blockchain.terminate()
         self.content_request_listener.terminate()
 
     def delete(self) -> None:
         self.terminate()
         try:
-            self.blockchain_identity.delete()
+            self.group_blockchain.delete()
         except walytis_beta_api.NoSuchBlockchainError:
             pass
         try:

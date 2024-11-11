@@ -40,7 +40,7 @@ def test_cleanup():
 
 def test_generic_blockchain_features():
     pytest.private_blockchain = test_generic_blockchain(
-        PrivateBlockchain, blockchain_identity=pytest.group_did_manager)
+        PrivateBlockchain, group_blockchain=pytest.group_did_manager)
 
 
 def run_tests():

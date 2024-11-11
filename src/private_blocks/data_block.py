@@ -11,20 +11,30 @@ from walytis_beta_api._experimental.generic_blockchain import GenericBlockchain
 
 
 class DataBlock(GenericBlock):
-    content: bytes | bytearray = bytearray()
-
+    
     def __init__(
         self, block: GenericBlock,
-        content: bytes | bytearray,
-        author: GroupDidManager
+        content: bytes | bytearray | None = None,
+        author: GroupDidManager | None = None
     ):
         self.base_block = block
-        self.content = content
-        self.author = author
-
+        self._content = content
+        self._author = author
+    @property
+    def content(self):
+        return self._content
+    @property
+    def author(self):
+        return self._author
     @staticmethod
     def from_id(
-        block_id: bytearray, blockchain: GenericBlockchain
+        block_id: bytearray | bytes, blockchain: GenericBlockchain
+    ) -> 'DataBlock':
+        return DataBlock.from_block(block_id, blockchain)
+
+    @staticmethod
+    def from_block(
+        block_id: bytearray | bytes | GenericBlock, blockchain: GenericBlockchain
     ) -> 'DataBlock':
         return blockchain.load_block(block_id)
 
@@ -71,6 +81,35 @@ class DataBlocksList(BlocksList[BlockType]):
         self.blockchain = blockchain
 
     @classmethod
+    def from_blocks(
+        cls: Type['BlocksList[BlockType]'],
+        blocks: list[BlockType],
+        blockchain: GenericBlockchain,
+        block_class: Type[BlockType]
+    ) -> 'BlocksList[BlockType]':
+        # if blocks and not isinstance(blocks[0], block_class):
+        #     raise TypeError(
+        #         f"Blocks are of type {type(blocks[0])}, not {block_class}"
+        #     )
+        # Use dict.fromkeys() to create the dictionary efficiently
+        blocks_dict = dict([
+            (bytes(block.long_id), block) for block in blocks
+        ])
+
+        # Cast the dictionary to an instance of BlocksList
+        # Create an uninitialized instance of the class
+        blocks_list = cls.__new__(cls)
+
+        # Manually initialize the dictionary part with the data
+        blocks_list.update(blocks_dict)
+
+        # Manually set the block_class
+        blocks_list.block_class = block_class
+        blocks_list.blockchain = blockchain
+
+        return blocks_list
+
+    @classmethod
     def from_block_ids(
         cls: Type['BlocksList[BlockType]'],
         block_ids: list[bytes],
@@ -88,7 +127,8 @@ class DataBlocksList(BlocksList[BlockType]):
         blocks_dict = dict.fromkeys(block_ids, None)
 
         # Cast the dictionary to an instance of BlocksList
-        blocks_list = cls.__new__(cls)  # Create an uninitialized instance of the class
+        # Create an uninitialized instance of the class
+        blocks_list = cls.__new__(cls)
 
         # Manually initialize the dictionary part with the data
         blocks_list.update(blocks_dict)
@@ -108,7 +148,7 @@ class DataBlocksList(BlocksList[BlockType]):
                     "It looks like you passed an short ID or invalid ID as a parameter.")
             else:
                 raise BlockNotFoundError()
-        if not block:
-            block = self.block_class.from_id(bytearray(block_id), self.blockchain)
+        if not block or not isinstance(block, self.block_class):
+            block = self.block_class.from_id(block_id, self.blockchain)
             dict.__setitem__(self, block_id, block)
         return block
