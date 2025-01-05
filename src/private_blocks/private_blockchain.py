@@ -40,7 +40,7 @@ class PrivateBlockchain(blockstore.BlockStore, GenericBlockchain):
             group_blockchain: the object for managing this blockchain's
                 participants, used for encryption in transmission of blocks'
                 off-chain content
-            base_blockchain: the blockchain to be used for storing the
+            base_blockchain: the blockchain to be used for registering the
                 PrivateBlocks (actual content is off-chain).
                 If `None`, `group_blockchain.blockchain`
                 is used instead.
@@ -60,7 +60,7 @@ class PrivateBlockchain(blockstore.BlockStore, GenericBlockchain):
         if base_blockchain:
             self.base_blockchain = base_blockchain
         else:
-            self.base_blockchain = self.group_blockchain.blockchain
+            self.base_blockchain = self.group_blockchain
 
         self.virtual_layer_name = virtual_layer_name
         # logger.info(f"PB: Initialising Private Blockchain: {virtual_layer_name}")
@@ -81,6 +81,8 @@ class PrivateBlockchain(blockstore.BlockStore, GenericBlockchain):
             listener_name=f"PrivateBlocks{self.base_blockchain.blockchain_id}",
             eventhandler=self.handle_content_request
         )
+        
+        self.base_blockchain.block_received_handler=self._on_block_received_dummy
 
     def load_block(self, block: bytes | GenericBlock) -> DataBlock:
         if isinstance(block, bytes | bytearray):
@@ -119,7 +121,8 @@ class PrivateBlockchain(blockstore.BlockStore, GenericBlockchain):
         self._blocks.add_block(block)
 
         return block
-
+    def _on_block_received_dummy(self, block:GenericBlock):
+        print("PrivateBlocks: Received block but don't yet have the functionality to process it")
     def _on_block_received(self, block: GenericBlock) -> None:
         if self.virtual_layer_name not in block.topics:
             # logger.info(f"PB: Passing on block: {block.topics}")
@@ -206,9 +209,9 @@ class PrivateBlockchain(blockstore.BlockStore, GenericBlockchain):
     def blockchain_id(self):
         return self.base_blockchain.blockchain_id
 
-    def terminate(self) -> None:
-        self.group_blockchain.terminate()
-        self.base_blockchain.terminate()
+    def terminate(self,**kwargs) -> None:
+        self.group_blockchain.terminate(**kwargs)
+        self.base_blockchain.terminate(**kwargs)
         self.content_request_listener.terminate()
 
     def delete(self) -> None:
