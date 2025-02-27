@@ -86,7 +86,6 @@ HELLO_THERE = "Hello there!".encode()
 def test_add_block():
     """Test that we can create a PrivateBlockchain and add a block."""
     print("Creating private blockchain...")
-    pytest.blockchain_id = waly.create_blockchain()
     pytest.pri_blockchain = PrivateBlockchain(pytest.group_did_manager)
     block = pytest.pri_blockchain.add_block(HELLO_THERE)
     blockchain_blocks = list(pytest.pri_blockchain.get_blocks())
@@ -107,21 +106,29 @@ sys.path.insert(0, '/opt/PriBlocks/tests')
 from private_blocks import PrivateBlockchain
 import test_block_sharing
 import walytis_beta_api as waly
+import threading
+from time import sleep
+
 from test_block_sharing import pytest
 print("About to run preparations...")
+print(threading.enumerate())
+
 test_block_sharing.test_preparations()
 print("About to create Private Blockchain...")
+print(threading.enumerate())
 pytest.pri_blockchain = PrivateBlockchain(pytest.group_did_manager)
+
 print("Created PrivateBlockchain.")
+print(threading.enumerate())
 block = pytest.pri_blockchain.add_block("Hello there!".encode())
 print(block.content)
+
 pytest.pri_blockchain.terminate()
 print("Terminated private blockchain.")
 pytest.group_did_manager.terminate()
+pytest.group_did_manager.member_did_manager.terminate()
 # test_block_sharing.cleanup()
 print("Finished cleanup.")
-import threading
-from time import sleep
 while len(threading.enumerate()) > 1:
     print(threading.enumerate())
     sleep(1)
@@ -135,9 +142,9 @@ print(threading.enumerate())
         "Synchronised block"
     )
 
-
+from time import sleep
 def run_tests():
-    print("\nRunning tests for Prviate Block Sharing:")
+    print("\nRunning tests for Private Block Sharing:")
     test_preparations()
     test_create_docker_containers()
 
