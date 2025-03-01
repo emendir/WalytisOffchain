@@ -61,26 +61,26 @@ class PrivateBlockchain(blockstore.BlockStore, GenericBlockchain):
             sequential_block_handling:
             update_blockids_before_handling:
         """
-        self._terminate=False
+        self._terminate = False
         blockstore.BlockStore.__init__(self)
         self.group_blockchain = group_blockchain
-        group_blockchain.block_received_handler = self._on_block_received
 
         if base_blockchain:
             self.base_blockchain = base_blockchain
         else:
             self.base_blockchain = self.group_blockchain
+        self.base_blockchain.block_received_handler = self._on_block_received
 
         self.virtual_layer_name = virtual_layer_name
         # logger.info(f"PB: Initialising Private Blockchain: {virtual_layer_name}")
-        
+
         self.init_blockstore()
         known_blocks = self.get_known_blocks()
         blocks = [
             block for block in self.base_blockchain.get_blocks()
 
             if self.virtual_layer_name in block.topics
-            and block.long_id in known_blocks
+            and bytes(block.long_id) in known_blocks
         ]
         self._blocks = DataBlocksList.from_blocks(blocks, self, DataBlock)
 
@@ -100,6 +100,12 @@ class PrivateBlockchain(blockstore.BlockStore, GenericBlockchain):
         self.members = {
             self.group_blockchain.member_did_manager.did: self.group_blockchain.member_did_manager
         }
+        if auto_load_missed_blocks:
+            self.load_missed_blocks()
+
+    def load_missed_blocks(self):
+        self.base_blockchain.load_missed_blocks()
+
     def load_block(self, block: bytes | GenericBlock) -> DataBlock:
         if isinstance(block, bytes | bytearray):
             block = self.base_blockchain.get_block(block)
@@ -127,25 +133,30 @@ class PrivateBlockchain(blockstore.BlockStore, GenericBlockchain):
         self, content: bytes, topics: str | list[str] = []
     ) -> DataBlock:
         sleep(1)
-        
+
         if isinstance(topics, str):
             topics = [topics]
         signature = self.group_blockchain.member_did_manager.sign(content)
-        block_content = self.group_blockchain.member_did_manager.did.encode() + \
+        block_content = (
+            self.group_blockchain.member_did_manager.did.encode() +
             bytearray([0]) + signature
+        )
         if self.virtual_layer_name:
             topics = [self.virtual_layer_name] + topics
+
         base_block = self.base_blockchain.add_block(block_content, topics)
+
         block = DataBlock(base_block, content, author=self.group_blockchain)
         self.store_block_content(block.long_id, content)
         self.store_block_author(
             block.long_id, self.group_blockchain.member_did_manager.did)
+        self.base_blockchain.get_block(block.long_id)
         self._blocks.add_block(block)
 
         return block
 
-
     def _on_block_received(self, block: GenericBlock) -> None:
+        """Handle a block received by `self.base_blockchain`"""
         if self.virtual_layer_name not in block.topics:
             # logger.info(f"PB: Passing on block: {block.topics}")
             if self.other_blocks_handler:
@@ -155,15 +166,14 @@ class PrivateBlockchain(blockstore.BlockStore, GenericBlockchain):
         # get and store private content
         author, private_content = self.ask_around_for_content(
             block)  # block content is content_id
-        
+
         # create PriBlock object from block and private content
         # call user's eventhandler
         private_block = DataBlock(block, private_content, author)
         self._blocks.add_block(private_block)
-        
+
         if self.block_received_handler:
             self.block_received_handler(private_block)
-        
 
     def ask_around_for_content(self, block: GenericBlock) -> tuple[str, bytes | None]:
         """Try to get a block's referred off-chain data from other peers.
@@ -190,7 +200,7 @@ class PrivateBlockchain(blockstore.BlockStore, GenericBlockchain):
                 except walytis_beta_api.JoinFailureError:
                     pass
         author_did_manager = self.members.get(author_did)
-        
+
         if not author_did:
             if author_blockchain_id not in walytis_beta_api.list_blockchain_ids():
                 logger.warning("Failed to join block author's blockchain")
@@ -201,9 +211,7 @@ class PrivateBlockchain(blockstore.BlockStore, GenericBlockchain):
                 author_blockchain_id
             )
             self.members.update({author_did: author_did_manager})
-        
 
-            
         private_content: bytes | None = None
         while not private_content:
             if self._terminate:
@@ -226,13 +234,12 @@ class PrivateBlockchain(blockstore.BlockStore, GenericBlockchain):
                     peers.remove(peer)
                 if peer != ipfs_api.my_id():
                     peers.insert(0, peer)
-                    
-                
+
             try:
                 for peer in peers:
                     if self._terminate:
                         return (author_did, None)
-                            
+
                     conv = start_conversation(
                         f"PrivateBlocks: ContentRequest: {block.ipfs_cid}",
                         peer,
@@ -246,7 +253,8 @@ class PrivateBlockchain(blockstore.BlockStore, GenericBlockchain):
                     decoded_response = self.group_blockchain.decrypt(response)
                     if author_did_manager.verify(decoded_response, signature):
                         private_content = decoded_response
-                        self.store_block_content(block.long_id, private_content)
+                        self.store_block_content(
+                            block.long_id, private_content)
                         self.store_block_author(block.long_id, author_did)
 
                         break
@@ -299,7 +307,7 @@ class PrivateBlockchain(blockstore.BlockStore, GenericBlockchain):
 
     def delete(self) -> None:
         self.terminate()
-        
+
         try:
             self.group_blockchain.delete()
         except walytis_beta_api.NoSuchBlockchainError:

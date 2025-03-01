@@ -53,8 +53,8 @@ class BlockStore(DedicatedThreadClass):
         """Get a the block IDs of the blocks whose private content we have."""
         cursor = self.content_db.cursor()
         cursor.execute('SELECT block_id FROM BlockContent;')
-        result = cursor.fetchone()
-        return result if result else []
+        results = cursor.fetchall()
+        return [r[0] for r in results] if results else []
     @run_on_dedicated_thread
     def store_block_content(self, block_id: bytes | bytearray, content: bytes | bytearray):
         with self.content_db:

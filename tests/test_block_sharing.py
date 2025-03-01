@@ -142,7 +142,6 @@ print(threading.enumerate())
         "Synchronised block"
     )
 
-from time import sleep
 def run_tests():
     print("\nRunning tests for Private Block Sharing:")
     test_preparations()

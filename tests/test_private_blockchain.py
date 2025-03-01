@@ -1,6 +1,7 @@
-from time import sleep
-import threading
 import os
+import shutil
+import tempfile
+import threading
 
 import _testing_utils
 import private_blocks
@@ -8,28 +9,11 @@ import pytest
 import walidentity
 import walytis_beta_api as waly
 from _testing_utils import mark, test_threads_cleanup
-from prebuilt_group_did_managers import (
-    load_did_manager,
-)
-from priblocks_docker.priblocks_docker import (
-    PriBlocksDocker,
-    delete_containers,
-)
 from private_blocks import PrivateBlockchain
-import os
-import shutil
-import tempfile
-
-import _testing_utils
-import pytest
-import walidentity
-import walytis_beta_api
-from _testing_utils import mark
-from walidentity import did_manager, key_store
 from walidentity.did_manager import DidManager
 from walidentity.did_objects import Key
 from walidentity.group_did_manager import GroupDidManager
-from walidentity.key_store import CodePackage, KeyStore
+from walidentity.key_store import KeyStore
 
 _testing_utils.assert_is_loaded_from_source(
     source_dir=os.path.dirname(os.path.dirname(__file__)),
@@ -119,7 +103,7 @@ def test_add_block():
 
 
 def run_tests():
-    print("\nRunning tests for Private Block Sharing:")
+    print("\nRunning tests for Private Blockchain:")
     test_preparations()
     create_private_blockchain()
     test_add_block()

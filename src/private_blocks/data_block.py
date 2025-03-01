@@ -147,7 +147,7 @@ class DataBlocksList(BlocksList[BlockType]):
                 raise ValueError(
                     "It looks like you passed an short ID or invalid ID as a parameter.")
             else:
-                raise BlockNotFoundError()
+                raise BlockNotFoundError("PB: Couldn't find this block_id in BlocksList")
         if not block or not isinstance(block, self.block_class):
             block = self.block_class.from_id(block_id, self.blockchain)
             dict.__setitem__(self, block_id, block)

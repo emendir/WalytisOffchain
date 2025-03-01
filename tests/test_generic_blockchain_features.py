@@ -1,13 +1,16 @@
 import os
+import tempfile
 
 import _testing_utils
 import private_blocks
 import pytest
 import walidentity
-from prebuilt_group_did_managers import (
-    load_did_manager,
-)
 from private_blocks import PrivateBlockchain
+from walidentity.did_manager import DidManager
+from walidentity.did_objects import Key
+from walidentity.group_did_manager import GroupDidManager
+from walidentity.key_store import KeyStore
+from walytis_beta_api._experimental import generic_blockchain_testing
 from walytis_beta_api._experimental.generic_blockchain_testing import (
     test_generic_blockchain,
 )
@@ -25,12 +28,26 @@ _testing_utils.assert_is_loaded_from_source(
 
 
 def test_preparations():
+    pytest.did_config_dir = tempfile.mkdtemp()
+    pytest.key_store_path = os.path.join(
+        pytest.did_config_dir, "master_keystore.json")
 
-    tarfile = "group_did_manager_2.tar"
-    pytest.group_did_manager = load_did_manager(os.path.join(
-        os.path.dirname(__file__),
-        tarfile
-    ))
+    # the cryptographic family to use for the tests
+    pytest.CRYPTO_FAMILY = "EC-secp256k1"
+    pytest.KEY = Key.create(pytest.CRYPTO_FAMILY)
+
+    device_keystore_path = os.path.join(
+        pytest.did_config_dir, "device_keystore.json")
+    profile_keystore_path = os.path.join(
+        pytest.did_config_dir, "profile_keystore.json")
+
+    device_did_keystore = KeyStore(device_keystore_path, pytest.KEY)
+    profile_did_keystore = KeyStore(profile_keystore_path, pytest.KEY)
+    pytest.member_1 = DidManager.create(device_did_keystore)
+    pytest.group_did_manager = GroupDidManager.create(
+        profile_did_keystore, pytest.member_1
+    )
+
 
 
 def test_cleanup():
@@ -50,4 +67,6 @@ def run_tests():
 
 
 if __name__ == "__main__":
+    generic_blockchain_testing.PYTEST = False
+    generic_blockchain_testing.BREAKPOINTS=True
     run_tests()
