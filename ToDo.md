@@ -5,3 +5,4 @@
 
 - PrivateBlockchain._on_block_received: ask around for private content on thread in background
 - PrivateBlockchain.ask_around_for_content: test and debug
+- PrivateBlockchain.delete: delete RocksDB appdata

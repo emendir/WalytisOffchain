@@ -7,7 +7,6 @@ from private_blocks.threaded_object import DedicatedThreadClass, run_on_dedicate
 
 class BlockStore(DedicatedThreadClass):
     content_db_path: str
-    authors_db_path: str
     def __init__(self):
         DedicatedThreadClass.__init__(self)
     @run_on_dedicated_thread
@@ -22,11 +21,9 @@ class BlockStore(DedicatedThreadClass):
 
         self.content_db_path = os.path.join(
             self.appdata_path, "BlockContent.db")
-        self.authors_db_path = os.path.join(
-            self.appdata_path, "BlockAuthors.db")
+
 
         self.content_db = sqlite3.connect(self.content_db_path)
-        self.authors_db = sqlite3.connect(self.authors_db_path)
 
         self._create_tables()
 
@@ -40,13 +37,7 @@ class BlockStore(DedicatedThreadClass):
                 )
             ''')
 
-        with self.authors_db:
-            self.authors_db.execute('''
-                CREATE TABLE IF NOT EXISTS BlockAuthors (
-                    block_id BLOB PRIMARY KEY,
-                    author BLOB
-                )
-            ''')
+
 
     @run_on_dedicated_thread
     def get_known_blocks(self) -> list[bytes]:
@@ -72,27 +63,11 @@ class BlockStore(DedicatedThreadClass):
         result = cursor.fetchone()
         return result[0] if result else None
 
-    @run_on_dedicated_thread
-    def get_block_author(self, block_id: bytes):
-        cursor = self.authors_db.cursor()
-        cursor.execute('''
-            SELECT author FROM BlockAuthors WHERE block_id = ?
-        ''', (block_id,))
-        result = cursor.fetchone()
-        return result[0] if result else None
 
-    @run_on_dedicated_thread
-    def store_block_author(self, block_id: bytes, author: bytes):
-        with self.authors_db:
-            self.authors_db.execute('''
-                INSERT OR REPLACE INTO BlockAuthors (block_id, author)
-                VALUES (?, ?)
-            ''', (block_id, author))
 
     @run_on_dedicated_thread
     def terminate(self):
         self.content_db.close()
-        self.authors_db.close()
         DedicatedThreadClass.terminate(self)
 
     def __del__(self):

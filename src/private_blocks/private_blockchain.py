@@ -74,15 +74,8 @@ class PrivateBlockchain(blockstore.BlockStore, GenericBlockchain):
         self.virtual_layer_name = virtual_layer_name
         # logger.info(f"PB: Initialising Private Blockchain: {virtual_layer_name}")
 
-        self.init_blockstore()
-        known_blocks = self.get_known_blocks()
-        blocks = [
-            block for block in self.base_blockchain.get_blocks()
-
-            if self.virtual_layer_name in block.topics
-            and bytes(block.long_id) in known_blocks
-        ]
-        self._blocks = DataBlocksList.from_blocks(blocks, self, DataBlock)
+        self.init_blockstore()  # RocksDB
+        self._init_blocks()  # BlocksLazilyLoaded
 
         self.block_received_handler = block_received_handler
         self.other_blocks_handler = other_blocks_handler
@@ -103,6 +96,17 @@ class PrivateBlockchain(blockstore.BlockStore, GenericBlockchain):
         if auto_load_missed_blocks:
             self.load_missed_blocks()
 
+    def _init_blocks(self):
+        known_blocks = self.get_known_blocks()
+        
+        blocks = [
+            block for block in self.base_blockchain.get_blocks()
+
+            if self.virtual_layer_name in block.topics
+            and bytes(block.long_id) in known_blocks
+        ]
+        self._blocks = DataBlocksList.from_blocks(blocks, self, DataBlock)
+
     def load_missed_blocks(self):
         self.base_blockchain.load_missed_blocks()
 
@@ -110,9 +114,12 @@ class PrivateBlockchain(blockstore.BlockStore, GenericBlockchain):
         if isinstance(block, bytes | bytearray):
             block = self.base_blockchain.get_block(block)
         content = self.get_block_content(block.long_id)
-        author = self.get_block_author(block.long_id)
+        author = self.get_block_author_did(block)
         return DataBlock(block, content, author)
-
+    def get_block_author_did(self, block:DataBlock)->str:
+        i = block.content.index(bytearray([0]))
+        author_did = block.content[:i].decode()
+        return author_did
     def get_block(self, block_id: bytearray | bytes | int) -> DataBlock:
         if isinstance(block_id, int):
             block_id = self.get_block_ids()[block_id]
@@ -148,9 +155,6 @@ class PrivateBlockchain(blockstore.BlockStore, GenericBlockchain):
 
         block = DataBlock(base_block, content, author=self.group_blockchain)
         self.store_block_content(block.long_id, content)
-        self.store_block_author(
-            block.long_id, self.group_blockchain.member_did_manager.did)
-        self.base_blockchain.get_block(block.long_id)
         self._blocks.add_block(block)
 
         return block
@@ -255,7 +259,6 @@ class PrivateBlockchain(blockstore.BlockStore, GenericBlockchain):
                         private_content = decoded_response
                         self.store_block_content(
                             block.long_id, private_content)
-                        self.store_block_author(block.long_id, author_did)
 
                         break
                     else:
