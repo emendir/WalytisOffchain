@@ -14,7 +14,7 @@ from priblocks_docker.priblocks_docker import (
     delete_containers,
 )
 from private_blocks import PrivateBlockchain
-
+from walidentity.utils import logger
 _testing_utils.assert_is_loaded_from_source(
     source_dir=os.path.dirname(os.path.dirname(__file__)),
     module=private_blocks
@@ -31,6 +31,7 @@ waly.log.PRINT_DEBUG = False
 
 
 REBUILD_DOCKER = True
+DOCKER_NAME="priblock_sync_test"
 
 # automatically remove all docker containers after failed tests
 DELETE_ALL_BRENTHY_DOCKERS = True
@@ -62,11 +63,16 @@ def test_preparations():
         os.path.dirname(__file__),
         tarfile
     ))
+    
+    # in docker, update the MemberJoiningBlock to include the new 
+    if os.path.exists("/opt/we_are_in_docker"):
+        logger.debug("Updating MemberJoiningBlock")
+        pytest.group_did_manager.add_member(pytest.group_did_manager.member_did_manager)
 
 
 def test_create_docker_containers():
     for i in range(1):
-        pytest.containers.append(PriBlocksDocker())
+        pytest.containers.append(PriBlocksDocker(container_name=f"{DOCKER_NAME}_{i}"))
 
 
 def cleanup():
@@ -81,24 +87,29 @@ def cleanup():
 
 
 HELLO_THERE = "Hello there!".encode()
+HI = "Hi!".encode()
 
 
-def test_add_block():
+def test_load_blockchain():
     """Test that we can create a PrivateBlockchain and add a block."""
-    print("Creating private blockchain...")
+    logger.debug("Creating private blockchain...")
     pytest.pri_blockchain = PrivateBlockchain(pytest.group_did_manager)
+    mark(True,
+        "Created private blockchain"
+    )
+def test_add_block():
     block = pytest.pri_blockchain.add_block(HELLO_THERE)
     blockchain_blocks = list(pytest.pri_blockchain.get_blocks())
     mark(
         blockchain_blocks and
         blockchain_blocks[-1].content == block.content == HELLO_THERE,
-        "Created private blockchain, added block"
+        "Added block"
     )
 
 
 def test_block_synchronisation():
     """Test that the previously created block is available in the container."""
-    python_code = '''
+    python_code = f'''
 import sys
 sys.path.insert(0, '/opt/WalIdentity/src')
 sys.path.insert(0, '/opt/PriBlocks/src')
@@ -108,44 +119,51 @@ import test_block_sharing
 import walytis_beta_api as waly
 import threading
 from time import sleep
+from walidentity.utils import logger
 
+import test_block_sharing
 from test_block_sharing import pytest
-print("About to run preparations...")
-print(threading.enumerate())
+logger.debug("About to run preparations...")
+logger.debug(threading.enumerate())
 
 test_block_sharing.test_preparations()
-print("About to create Private Blockchain...")
-print(threading.enumerate())
+logger.debug("About to create Private Blockchain...")
+logger.debug(threading.enumerate())
 pytest.pri_blockchain = PrivateBlockchain(pytest.group_did_manager)
 
-print("Created PrivateBlockchain.")
-print(threading.enumerate())
-block = pytest.pri_blockchain.add_block("Hello there!".encode())
-print(block.content)
+logger.debug("Created PrivateBlockchain.")
+logger.debug(threading.enumerate())
+block = pytest.pri_blockchain.add_block("{HI.decode()}".encode())
+logger.debug("Added private block:")
+logger.debug(block.content)
+sleep({SYNC_DUR*20})
 
 pytest.pri_blockchain.terminate()
-print("Terminated private blockchain.")
+logger.debug("Terminated private blockchain.")
 pytest.group_did_manager.terminate()
 pytest.group_did_manager.member_did_manager.terminate()
 # test_block_sharing.cleanup()
-print("Finished cleanup.")
+logger.debug("Finished cleanup.")
 while len(threading.enumerate()) > 1:
-    print(threading.enumerate())
+    logger.debug(threading.enumerate())
     sleep(1)
-print(threading.enumerate())
 '''
-    output = pytest.containers[0].run_python_code(
-        python_code, print_output=True)
+    pytest.containers[0].run_python_code(
+        python_code, print_output=False, background=True)
     # breakpoint()
+    
+    sleep(SYNC_DUR)
     mark(
-        HELLO_THERE.decode() in output,
+        pytest.pri_blockchain.get_num_blocks()> 0 and pytest.pri_blockchain.get_block(-1).content == HI,
         "Synchronised block"
     )
-
+from time import sleep
+SYNC_DUR=20
 def run_tests():
-    print("\nRunning tests for Private Block Sharing:")
+    logger.debug("\nRunning tests for Private Block Sharing:")
     test_preparations()
     test_create_docker_containers()
+    test_load_blockchain()
 
     test_add_block()
     test_block_synchronisation()

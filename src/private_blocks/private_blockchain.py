@@ -208,17 +208,23 @@ class PrivateBlockchain(blockstore.BlockStore, GenericBlockchain):
         i = block.content.index(bytearray([0]))
         author_did = block.content[:i].decode()
         author_blockchain_id = blockchain_id_from_did(author_did)
-        if author_blockchain_id not in walytis_beta_api.list_blockchain_ids():
-            signature = block.content[i + 1:]
+        signature = block.content[i + 1:]
 
-            # look for MemberJoiningBlock for the author
-            joins = [MemberJoiningBlock.load_from_block_content(block.content).get_member(
-            ) for block in self.group_blockchain.get_member_joining_blocks()]
-            invitations = [join['invitation']
-                          for join in joins if join['did'] == author_did]
-            if not invitations:
-                logger.error("Can't find block author's MemberJoiningBlock")
-            invitation = invitations[-1]
+        # look for MemberJoiningBlock for the author
+        joins = [
+            MemberJoiningBlock.load_from_block_content(block.content).get_member(
+        ) for block in self.group_blockchain.get_member_joining_blocks()
+    ]
+        invitations = [
+            join['invitation']
+                      for join in joins if join['did'] == author_did
+                  ]
+        if not invitations:
+            logger.error("Can't find block author's MemberJoiningBlock")
+        invitation = invitations[-1]
+        
+        
+        if author_blockchain_id not in walytis_beta_api.list_blockchain_ids():
             # try to join
             for i in range(5):  # TODO remove magic number
                 try:
@@ -226,25 +232,31 @@ class PrivateBlockchain(blockstore.BlockStore, GenericBlockchain):
                 except walytis_beta_api.JoinFailureError:
                     pass
             if author_blockchain_id not in walytis_beta_api.list_blockchain_ids():
+                logger.error("Couldn't join block author's DidManager")
+                logger.error(invitation)
                 return None
+        logger.info("Joined block author's DidManager")
+        
+        # load author's DidManager
+        author_did_manager = self.members.get(author_did)
+        if not author_did_manager:
             # load author's DidManager
             author_did_manager = DidManager.from_blockchain_id(
                 author_blockchain_id
             )
             self.members.update({author_did: author_did_manager})
+        logger.info("Loaded block author's DidManager")
 
-        # load author's DidManager
-        author_did_manager = self.members[author_did]
 
         private_content: bytes | None = None
         while not private_content:
             if self._terminate:
+                logger.debug("Exiting ask_around_for_content because of termination")
                 return None
+            # double check we haven't already got it
             private_content = self.get_block_content(block.long_id)
             if private_content:
                 break
-            if self._terminate:
-                return None
             peers = self.base_blockchain.get_peers()
             author_peer_id = block.creator_id.decode()
             author_peers = json.loads(invitation)["peers"]
@@ -258,12 +270,12 @@ class PrivateBlockchain(blockstore.BlockStore, GenericBlockchain):
                     peers.remove(peer)
                 if peer != ipfs_api.my_id():
                     peers.insert(0, peer)
-
+            logger.info(f"Asking peers: {len(peers)}")
             try:
                 for peer in peers:
                     if self._terminate:
                         return None
-
+                    logger.debug(f"Getting private content from {peer}")
                     conv = start_conversation(
                         f"PrivateBlocks: ContentRequest: {block.ipfs_cid}",
                         peer,
@@ -275,11 +287,11 @@ class PrivateBlockchain(blockstore.BlockStore, GenericBlockchain):
                     if not response:
                         continue
                     decoded_response = self.group_blockchain.decrypt(response)
-                    if author_did_manager.verify(decoded_response, signature):
+                    if author_did_manager.verify_signature(signature, decoded_response):
                         private_content = decoded_response
                         self.store_block_content(
                             block.long_id, private_content)
-
+                        logger.debug("Received and verified private content")
                         break
                     else:
                         logger.error(
@@ -290,9 +302,10 @@ class PrivateBlockchain(blockstore.BlockStore, GenericBlockchain):
                 import traceback
                 traceback.print_exc()
             if self._terminate:
+                logger.debug("Exiting ask_around_for_content because of termination")
                 return None
             sleep(1)
-
+        self.store_block_content(block.long_id, private_content)
         return private_content
 
     def handle_content_request(self, conv_name: str, peer_id: str) -> None:
