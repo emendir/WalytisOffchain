@@ -23,7 +23,7 @@ from .data_block import DataBlock, DataBlocksList
 # from loguru import logger
 COMMS_TIMEOUT_S = 30
 MIN_BLOCK_AGE_S = 5
-
+from threading import Thread
 
 class PrivateBlockchain(blockstore.BlockStore, GenericBlockchain):
     block_received_handler: Callable[[GenericBlock], None] | None = None
@@ -95,23 +95,40 @@ class PrivateBlockchain(blockstore.BlockStore, GenericBlockchain):
         self.members = {
             self.group_blockchain.member_did_manager.did: self.group_blockchain.member_did_manager
         }
+        self._blocks_to_find_thr = Thread(target=self._find_blocks)
         if auto_load_missed_blocks:
             self.load_missed_blocks()
+            self._blocks_to_find_thr.start()
 
     def _init_blocks(self):
-        known_blocks = self.get_known_blocks()
+        known_block_ids = self.get_known_blocks()
 
-        blocks = [
-            block for block in self.base_blockchain.get_blocks()
-
-            if self.virtual_layer_name in block.topics
-            and bytes(block.long_id) in known_blocks
-        ]
-        self._blocks = DataBlocksList.from_blocks(blocks, self, DataBlock)
+        known_blocks = []
+        blocks_to_find = []
+        for block in self.base_blockchain.get_blocks():
+            if self.virtual_layer_name in block.topics:
+                if bytes(block.long_id) in known_block_ids:
+                    known_blocks.append(block)
+                else:
+                    blocks_to_find.append(block)
+        self._blocks_to_find=blocks_to_find
+        self._blocks = DataBlocksList.from_blocks(known_blocks, self, DataBlock)
 
     def load_missed_blocks(self):
         self.base_blockchain.load_missed_blocks()
-
+    def _find_blocks(self):
+        while not self._terminate:
+            found_blocks = []
+            for block in self._blocks_to_find:
+                if self._terminate:
+                    return
+                private_content = self.ask_around_for_content(block)
+                if private_content:
+                    found_blocks.append(block)
+                    self._on_private_block_received(block, private_content)
+                    
+            for block in found_blocks:
+                self._blocks_to_find.remove(block)
     def load_block(self, block: bytes | GenericBlock) -> DataBlock:
         if isinstance(block, bytes | bytearray):
             block = self.base_blockchain.get_block(block)
@@ -173,6 +190,11 @@ class PrivateBlockchain(blockstore.BlockStore, GenericBlockchain):
         # logger.info(f"PB: Processing block: {block.topics}")
         # get and store private content
         private_content = self.ask_around_for_content(block)  # block content is content_id
+        if private_content:
+            self._on_private_block_received(block, private_content)
+        else:
+            self._blocks_to_find.append(block)
+    def _on_private_block_received(self, block:GenericBlock, private_content:bytes):
         author_did = self.get_block_author_did(block)
 
         # create PriBlock object from block and private content
@@ -230,6 +252,8 @@ class PrivateBlockchain(blockstore.BlockStore, GenericBlockchain):
                 try:
                     walytis_beta_api.join_blockchain(invitation)
                 except walytis_beta_api.JoinFailureError:
+                    pass
+                except walytis_beta_api.BlockchainAlreadyExistsError:
                     pass
             if author_blockchain_id not in walytis_beta_api.list_blockchain_ids():
                 logger.error("Couldn't join block author's DidManager")
@@ -309,6 +333,8 @@ class PrivateBlockchain(blockstore.BlockStore, GenericBlockchain):
         return private_content
 
     def handle_content_request(self, conv_name: str, peer_id: str) -> None:
+        if self._terminate:
+            return
         conv = join_conversation(
             conv_name + peer_id,
             peer_id,
@@ -339,6 +365,7 @@ class PrivateBlockchain(blockstore.BlockStore, GenericBlockchain):
         for did_manager in self.members.values():
             logger.info("Terminating member...")
             did_manager.terminate()
+        self._blocks_to_find_thr.join()
         logger.info("PB: TERMINATED!")
 
     def delete(self) -> None:
