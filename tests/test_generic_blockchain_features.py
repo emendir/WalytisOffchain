@@ -10,8 +10,8 @@ from walidentity.did_manager import DidManager
 from walidentity.did_objects import Key
 from walidentity.group_did_manager import GroupDidManager
 from walidentity.key_store import KeyStore
-from walytis_beta_api._experimental import generic_blockchain_testing
-from walytis_beta_api._experimental.generic_blockchain_testing import (
+from walytis_beta_embedded._walytis_beta.walytis_beta_api._experimental import generic_blockchain_testing
+from walytis_beta_embedded._walytis_beta.walytis_beta_api._experimental.generic_blockchain_testing import (
     test_generic_blockchain,
 )
 

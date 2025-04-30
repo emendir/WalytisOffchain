@@ -7,7 +7,7 @@ import _testing_utils
 import private_blocks
 import pytest
 import walidentity
-import walytis_beta_api as waly
+import walytis_beta_embedded._walytis_beta.walytis_beta_api as waly
 from _testing_utils import mark, test_threads_cleanup
 from private_blocks import PrivateBlockchain
 from walidentity.did_manager import DidManager

@@ -4,7 +4,7 @@ import _testing_utils
 import private_blocks
 import pytest
 import walidentity
-import walytis_beta_api as waly
+import walytis_beta_embedded._walytis_beta.walytis_beta_api as waly
 from _testing_utils import mark, test_threads_cleanup
 from prebuilt_group_did_managers import (
     load_did_manager,
@@ -116,7 +116,7 @@ sys.path.insert(0, '/opt/PriBlocks/src')
 sys.path.insert(0, '/opt/PriBlocks/tests')
 from private_blocks import PrivateBlockchain
 import test_block_sharing
-import walytis_beta_api as waly
+import walytis_beta_embedded._walytis_beta.walytis_beta_api as waly
 import threading
 from time import sleep
 from walidentity.utils import logger

@@ -3,11 +3,11 @@ from __future__ import annotations
 from typing import Type, TypeVar
 
 from walidentity.group_did_manager import GroupDidManager
-from walytis_beta_api import BlockNotFoundError
-from walytis_beta_api._experimental.block_lazy_loading import BlocksList
-from walytis_beta_api._experimental.generic_blockchain import GenericBlock
+from walytis_beta_embedded._walytis_beta.walytis_beta_api import BlockNotFoundError
+from walytis_beta_tools._experimental.block_lazy_loading import BlocksList
+from walytis_beta_embedded._walytis_beta.walytis_beta_api._experimental.generic_blockchain import GenericBlock
 
-from walytis_beta_api._experimental.generic_blockchain import GenericBlockchain
+from walytis_beta_embedded._walytis_beta.walytis_beta_api._experimental.generic_blockchain import GenericBlockchain
 
 
 class DataBlock(GenericBlock):

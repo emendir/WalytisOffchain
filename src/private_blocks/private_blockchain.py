@@ -4,21 +4,18 @@ from datetime import datetime
 import threading
 from time import sleep
 import json
-import ipfs_api
+from walytis_beta_embedded import ipfs
 from walidentity.did_manager_with_supers import DidManagerWithSupers
 from walidentity.did_manager_blocks import MemberJoiningBlock
 from typing import Callable
 from loguru import logger
-import walytis_beta_api
-from ipfs_datatransmission import (
-    ConversationListener,
-    join_conversation,
-    start_conversation,
-)
+import walytis_beta_embedded._walytis_beta.walytis_beta_api
+from walytis_beta_embedded import ipfs
+
 from walidentity.did_manager import DidManager
 from walidentity.group_did_manager import GroupDidManager
-from walytis_beta_api import decode_short_id
-from walytis_beta_api._experimental.generic_blockchain import GenericBlock, GenericBlockchain
+from walytis_beta_embedded._walytis_beta.walytis_beta_api import decode_short_id
+from walytis_beta_embedded._walytis_beta.walytis_beta_api._experimental.generic_blockchain import GenericBlock, GenericBlockchain
 from walidentity.did_manager import blockchain_id_from_did
 from . import blockstore
 from .data_block import DataBlock, DataBlocksList
@@ -87,7 +84,7 @@ class PrivateBlockchain(blockstore.BlockStore, GenericBlockchain):
             raise ValueError(
                 "`virtual_layer_name` cannot be empty!"
             )
-        self.content_request_listener = ConversationListener(
+        self.content_request_listener = ipfs.listen_for_conversations(
             listener_name=f"PrivateBlocks{self.base_blockchain.blockchain_id}",
             eventhandler=self.handle_content_request
         )
@@ -217,7 +214,7 @@ class PrivateBlockchain(blockstore.BlockStore, GenericBlockchain):
 
         No Exceptions, while loop until content is found, unless we want to
         keep track of processed blocks ourselves
-        instead of letting walytis_beta_api do.
+        instead of letting walytis_beta_embedded._walytis_beta.walytis_beta_api do.
         """
         # ensure we don't process a block too soon
         block_age = (datetime.utcnow() - block.creation_time).total_seconds()
@@ -251,16 +248,16 @@ class PrivateBlockchain(blockstore.BlockStore, GenericBlockchain):
             logger.error("Can't find block author's MemberJoiningBlock")
         invitation = invitations[-1]
 
-        if author_blockchain_id not in walytis_beta_api.list_blockchain_ids():
+        if author_blockchain_id not in walytis_beta_embedded._walytis_beta.walytis_beta_api.list_blockchain_ids():
             # try to join
             for i in range(5):  # TODO remove magic number
                 try:
-                    walytis_beta_api.join_blockchain(invitation)
-                except walytis_beta_api.JoinFailureError:
+                    walytis_beta_embedded._walytis_beta.walytis_beta_api.join_blockchain(invitation)
+                except walytis_beta_embedded._walytis_beta.walytis_beta_api.JoinFailureError:
                     pass
-                except walytis_beta_api.BlockchainAlreadyExistsError:
+                except walytis_beta_embedded._walytis_beta.walytis_beta_api.BlockchainAlreadyExistsError:
                     pass
-            if author_blockchain_id not in walytis_beta_api.list_blockchain_ids():
+            if author_blockchain_id not in walytis_beta_embedded._walytis_beta.walytis_beta_api.list_blockchain_ids():
                 logger.error("Couldn't join block author's DidManager")
                 logger.error(invitation)
                 return None
@@ -300,7 +297,7 @@ class PrivateBlockchain(blockstore.BlockStore, GenericBlockchain):
             for peer in author_peers:
                 if peer in peers:
                     peers.remove(peer)
-                if peer != ipfs_api.my_id():
+                if peer != ipfs.peer_id:
                     peers.insert(0, peer)
             logger.info(f"Asking peers: {len(peers)}")
             try:
@@ -308,7 +305,7 @@ class PrivateBlockchain(blockstore.BlockStore, GenericBlockchain):
                     if self._terminate:
                         return None
                     logger.debug(f"Getting private content from {peer}")
-                    conv = start_conversation(
+                    conv = ipfs.start_conversation(
                         f"PrivateBlocks: ContentRequest: {block.ipfs_cid}",
                         peer,
                         self.content_request_listener._listener_name
@@ -350,7 +347,7 @@ class PrivateBlockchain(blockstore.BlockStore, GenericBlockchain):
     def handle_content_request(self, conv_name: str, peer_id: str) -> None:
         if self._terminate:
             return
-        conv = join_conversation(
+        conv = ipfs.join_conversation(
             conv_name + peer_id,
             peer_id,
             conv_name,
@@ -388,11 +385,11 @@ class PrivateBlockchain(blockstore.BlockStore, GenericBlockchain):
 
         try:
             self.group_blockchain.delete()
-        except walytis_beta_api.NoSuchBlockchainError:
+        except walytis_beta_embedded._walytis_beta.walytis_beta_api.NoSuchBlockchainError:
             pass
         try:
             self.base_blockchain.delete()
-        except walytis_beta_api.NoSuchBlockchainError:
+        except walytis_beta_embedded._walytis_beta.walytis_beta_api.NoSuchBlockchainError:
             pass
 
     def __del__(self) -> None:

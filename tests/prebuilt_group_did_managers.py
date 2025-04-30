@@ -4,7 +4,7 @@ import tarfile
 import tempfile
 from datetime import datetime
 
-import walytis_beta_api as waly
+import walytis_beta_embedded._walytis_beta.walytis_beta_api as waly
 from walidentity.did_manager import (
     KEYSTORE_DID,
     DidManager,
