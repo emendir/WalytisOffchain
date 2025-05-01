@@ -319,8 +319,9 @@ class PrivateBlockchain(blockstore.BlockStore, GenericBlockchain):
                         decoded_response = self.group_blockchain.decrypt(
                             response)
                     except multi_crypt.crypt.LockedError:
-                        logger.error(f"CRYPT LOCKED for {
-                                     self.group_blockchain.did}")
+                        logger.error(
+                            f"CRYPT LOCKED for {self.group_blockchain.did}"
+                        )
                         continue
                     if author_did_manager.verify_signature(signature, decoded_response):
                         private_content = decoded_response

@@ -5,6 +5,13 @@ import os
 from private_blocks.threaded_object import DedicatedThreadClass, run_on_dedicated_thread
 
 
+_PRIVATE_BLOCKS_DATA_DIR = os.getenv("PRIVATE_BLOCKS_DATA_DIR", "")
+if _PRIVATE_BLOCKS_DATA_DIR:
+    PRIVATE_BLOCKS_DATA_DIR = _PRIVATE_BLOCKS_DATA_DIR
+else:
+    PRIVATE_BLOCKS_DATA_DIR = "."
+
+
 class BlockStore(DedicatedThreadClass):
     content_db_path: str
     def __init__(self):
@@ -12,8 +19,7 @@ class BlockStore(DedicatedThreadClass):
     @run_on_dedicated_thread
     def init_blockstore(self):
         self.appdata_path = os.path.join(
-            appdirs.user_data_dir(),
-            "PrivateBlocks",
+            PRIVATE_BLOCKS_DATA_DIR,
             self.base_blockchain.blockchain_id
         )
         if not os.path.exists(self.appdata_path):
