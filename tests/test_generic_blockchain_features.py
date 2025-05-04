@@ -2,14 +2,14 @@ import os
 import tempfile
 
 import _testing_utils
-import private_blocks
+import walytis_offchain
 import pytest
-import walidentity
-from private_blocks import PrivateBlockchain
-from walidentity.did_manager import DidManager
-from walidentity.did_objects import Key
-from walidentity.group_did_manager import GroupDidManager
-from walidentity.key_store import KeyStore
+import walytis_identities
+from walytis_offchain import PrivateBlockchain
+from walytis_identities.did_manager import DidManager
+from walytis_identities.did_objects import Key
+from walytis_identities.group_did_manager import GroupDidManager
+from walytis_identities.key_store import KeyStore
 from walytis_beta_embedded._walytis_beta.walytis_beta_api._experimental import generic_blockchain_testing
 from walytis_beta_embedded._walytis_beta.walytis_beta_api._experimental.generic_blockchain_testing import (
     test_generic_blockchain,
@@ -17,13 +17,13 @@ from walytis_beta_embedded._walytis_beta.walytis_beta_api._experimental.generic_
 
 _testing_utils.assert_is_loaded_from_source(
     source_dir=os.path.dirname(os.path.dirname(__file__)),
-    module=private_blocks
+    module=walytis_offchain
 )
 _testing_utils.assert_is_loaded_from_source(
     source_dir=os.path.join(
-        os.path.abspath(__file__), "..", "..", "..", "WalIdentity", "src"
+        os.path.abspath(__file__), "..", "..", "..", "walytis_identities", "src"
     ),
-    module=walidentity
+    module=walytis_identities
 )
 
 

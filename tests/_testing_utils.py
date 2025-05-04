@@ -22,7 +22,7 @@ sys.path.insert(0, os.path.join(
 BREAKPOINTS = False
 PYTEST = True  # whether or not this script is being run by pytest
 
-USING_BRENTHY=False # overridden to True in docker container
+USING_BRENTHY=True # overridden to True in docker container
 
 if os.path.exists("/opt/we_are_in_docker"):
     USING_BRENTHY=True
@@ -115,3 +115,7 @@ def assert_is_loaded_from_source(source_dir: str, module: ModuleType) -> None:
         f"Loaded module path: {module_path}\n"
     )
     print(f"Using module {module.__name__} from {module_path}")
+
+def terminate():
+    walytis_beta_embedded.terminate()
+    ipfs.terminate()

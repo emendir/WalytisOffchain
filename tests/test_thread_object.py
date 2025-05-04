@@ -2,10 +2,10 @@ import os
 import sys
 import threading
 import _testing_utils
-import private_blocks
-from private_blocks.threaded_object import DedicatedThreadClass, run_on_dedicated_thread
+import walytis_offchain
+from walytis_offchain.threaded_object import DedicatedThreadClass, run_on_dedicated_thread
 _testing_utils.assert_is_loaded_from_source(
-    source_dir=os.path.dirname(os.path.dirname(__file__)), module=private_blocks
+    source_dir=os.path.dirname(os.path.dirname(__file__)), module=walytis_offchain
 )
 
 thr = threading.current_thread()

@@ -2,7 +2,7 @@ import sqlite3
 import shutil
 import appdirs
 import os
-from private_blocks.threaded_object import DedicatedThreadClass, run_on_dedicated_thread
+from walytis_offchain.threaded_object import DedicatedThreadClass, run_on_dedicated_thread
 
 
 _PRIVATE_BLOCKS_DATA_DIR = os.getenv("PRIVATE_BLOCKS_DATA_DIR", "")

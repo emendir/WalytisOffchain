@@ -1,3 +1,4 @@
+import _testing_utils
 import os
 import shutil
 import tarfile
@@ -5,15 +6,15 @@ import tempfile
 from datetime import datetime
 
 import walytis_beta_embedded._walytis_beta.walytis_beta_api as waly
-from walidentity.did_manager import (
+from walytis_identities.did_manager import (
     KEYSTORE_DID,
     DidManager,
     blockchain_id_from_did,
 )
-from walidentity.did_objects import Key
-from walidentity.group_did_manager import GroupDidManager
-from walidentity.key_store import KeyStore
-
+from walytis_identities.did_objects import Key
+from walytis_identities.group_did_manager import GroupDidManager
+from walytis_identities.key_store import KeyStore
+os.chdir(os.path.dirname(__file__))
 config_dir_1 = tempfile.mkdtemp()
 config_dir_2 = tempfile.mkdtemp()
 CRYPTO_FAMILY = "EC-secp256k1"
@@ -106,8 +107,10 @@ def create_did_managers():
         group_did_manager_2.member_did_manager.blockchain.get_blockchain_data(),
         os.path.join(config_dir_2, "member_blockchain.zip")
     )
+    print("Terminating...")
     group_did_manager_1.terminate()
     group_did_manager_2.terminate()
+    print("Terminated!")
     # Create the tar file
     create_tar_from_directory(config_dir_1, "group_did_manager_1.tar")
     create_tar_from_directory(config_dir_2, "group_did_manager_2.tar")
@@ -152,3 +155,4 @@ def load_did_manager(tarfile:str):
 
 if __name__ == "__main__":
     create_did_managers()
+    _testing_utils.terminate()

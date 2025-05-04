@@ -5,18 +5,18 @@ import threading
 from time import sleep
 import json
 from walytis_beta_embedded import ipfs
-from walidentity.did_manager_with_supers import DidManagerWithSupers
-from walidentity.did_manager_blocks import MemberJoiningBlock
+from walytis_identities.did_manager_with_supers import DidManagerWithSupers
+from walytis_identities.did_manager_blocks import MemberJoiningBlock
 from typing import Callable
 from loguru import logger
 import walytis_beta_embedded._walytis_beta.walytis_beta_api
 from walytis_beta_embedded import ipfs
 
-from walidentity.did_manager import DidManager
-from walidentity.group_did_manager import GroupDidManager
+from walytis_identities.did_manager import DidManager
+from walytis_identities.group_did_manager import GroupDidManager
 from walytis_beta_embedded._walytis_beta.walytis_beta_api import decode_short_id
 from walytis_beta_embedded._walytis_beta.walytis_beta_api._experimental.generic_blockchain import GenericBlock, GenericBlockchain
-from walidentity.did_manager import blockchain_id_from_did
+from walytis_identities.did_manager import blockchain_id_from_did
 from . import blockstore
 from .data_block import DataBlock, DataBlocksList
 # from loguru import logger
