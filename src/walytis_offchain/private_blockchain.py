@@ -173,9 +173,8 @@ class PrivateBlockchain(blockstore.BlockStore, GenericBlockchain):
         )
         if self.virtual_layer_name:
             topics = [self.virtual_layer_name] + topics
-
+        
         base_block = self.base_blockchain.add_block(block_content, topics)
-
         block = DataBlock(base_block, content, author=self.group_blockchain)
         self.store_block_content(block.long_id, content)
         self._blocks.add_block(block)
@@ -191,8 +190,7 @@ class PrivateBlockchain(blockstore.BlockStore, GenericBlockchain):
             return
         # logger.info(f"PB: Processing block: {block.topics}")
         # get and store private content
-        private_content = self.ask_around_for_content(
-            block)  # block content is content_id
+        private_content = self.get_block_content(block.long_id)
         if private_content:
             self._on_private_block_received(block, private_content)
         else:

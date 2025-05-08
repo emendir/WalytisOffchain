@@ -22,10 +22,11 @@ sys.path.insert(0, os.path.join(
 BREAKPOINTS = False
 PYTEST = True  # whether or not this script is being run by pytest
 
-USING_BRENTHY=True # overridden to True in docker container
-
-if os.path.exists("/opt/we_are_in_docker"):
-    USING_BRENTHY=True
+USING_BRENTHY = False  # overridden to True in docker container
+WE_ARE_IN_DOCKER=os.path.exists('/.dockerenv')
+if WE_ARE_IN_DOCKER:
+    USING_BRENTHY = True
+from time import sleep
 if True:
     print("USING_BRENTHY", USING_BRENTHY)
     # ensure IPFS is initialised via Walytis_Beta.networking, not walytis_beta_embedded._walytis_beta.walytis_beta_api
@@ -109,12 +110,14 @@ def assert_is_loaded_from_source(source_dir: str, module: ModuleType) -> None:
     assert (
         source_path in module_path
     ), (
-        f"The module `{module.__name__}` has been loaded from an installion, not this "
+        f"The module `{
+            module.__name__}` has been loaded from an installion, not this "
         " source code!\n"
         f"Desired source dir: {source_path}\n"
         f"Loaded module path: {module_path}\n"
     )
     print(f"Using module {module.__name__} from {module_path}")
+
 
 def terminate():
     walytis_beta_embedded.terminate()

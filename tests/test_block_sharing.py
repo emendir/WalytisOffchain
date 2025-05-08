@@ -17,17 +17,19 @@ from priblocks_docker.priblocks_docker import (
 from time import sleep
 from walytis_offchain import PrivateBlockchain
 from walytis_identities.utils import logger
-_testing_utils.assert_is_loaded_from_source(
-    source_dir=os.path.dirname(os.path.dirname(__file__)),
-    module=walytis_offchain
-)
-_testing_utils.assert_is_loaded_from_source(
-    source_dir=os.path.join(
-        os.path.abspath(
-            __file__), "..", "..", "..", "walytis_identities", "src"
-    ),
-    module=walytis_identities
-)
+
+if not _testing_utils.WE_ARE_IN_DOCKER:
+    _testing_utils.assert_is_loaded_from_source(
+        source_dir=os.path.dirname(os.path.dirname(__file__)),
+        module=walytis_offchain
+    )
+    _testing_utils.assert_is_loaded_from_source(
+        source_dir=os.path.join(
+            os.path.abspath(
+                __file__), "..", "..", "..", "walytis_identities", "src"
+        ),
+        module=walytis_identities
+    )
 
 
 print(coloured(
@@ -44,7 +46,7 @@ DOCKER_NAME = "priblock_sync_test"
 
 # automatically remove all docker containers after failed tests
 DELETE_ALL_BRENTHY_DOCKERS = True
-if os.path.exists("/opt/we_are_in_docker"):
+if _testing_utils.WE_ARE_IN_DOCKER:
     REBUILD_DOCKER = False
     DELETE_ALL_BRENTHY_DOCKERS = False
 
@@ -64,7 +66,7 @@ def test_preparations():
     # Load pre-created GroupDidManager objects for testing:
 
     # choose which group_did_manager to load
-    if os.path.exists("/opt/we_are_in_docker"):
+    if _testing_utils.WE_ARE_IN_DOCKER:
         tarfile = "group_did_manager_1.tar"
     else:
         tarfile = "group_did_manager_2.tar"
@@ -74,7 +76,7 @@ def test_preparations():
     ))
 
     # in docker, update the MemberJoiningBlock to include the new
-    if os.path.exists("/opt/we_are_in_docker"):
+    if _testing_utils.WE_ARE_IN_DOCKER:
         logger.debug("Updating MemberJoiningBlock")
         pytest.group_did_manager.add_member(
             pytest.group_did_manager.member_did_manager)
@@ -150,7 +152,7 @@ logger.debug(threading.enumerate())
 block = pytest.pri_blockchain.add_block("{HI.decode()}".encode())
 logger.debug("Added private block:")
 logger.debug(block.content)
-sleep({SYNC_DUR * 20})
+sleep({SYNC_DUR})
 
 pytest.pri_blockchain.terminate()
 logger.debug("Terminated private blockchain.")
@@ -163,10 +165,8 @@ while len(threading.enumerate()) > 1:
     sleep(1)
 '''
     pytest.containers[0].run_python_code(
-        python_code, print_output=False, background=True)
-    # breakpoint()
+        python_code, print_output=True, background=False)
 
-    sleep(SYNC_DUR)
     mark(
         pytest.pri_blockchain.get_num_blocks(
         ) > 0 and pytest.pri_blockchain.get_block(-1).content == HI,
@@ -174,7 +174,7 @@ while len(threading.enumerate()) > 1:
     )
 
 
-SYNC_DUR = 20
+SYNC_DUR = 30
 
 
 def run_tests():

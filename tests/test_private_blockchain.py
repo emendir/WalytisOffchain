@@ -34,7 +34,7 @@ REBUILD_DOCKER = True
 
 # automatically remove all docker containers after failed tests
 DELETE_ALL_BRENTHY_DOCKERS = True
-if os.path.exists("/opt/we_are_in_docker"):
+if _testing_utils.WE_ARE_IN_DOCKER:
     REBUILD_DOCKER = False
     DELETE_ALL_BRENTHY_DOCKERS = False
 

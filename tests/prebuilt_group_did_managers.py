@@ -6,6 +6,7 @@ import tempfile
 from datetime import datetime
 
 import walytis_beta_embedded._walytis_beta.walytis_beta_api as waly
+import walytis_beta_embedded
 from walytis_identities.did_manager import (
     KEYSTORE_DID,
     DidManager,
@@ -14,6 +15,24 @@ from walytis_identities.did_manager import (
 from walytis_identities.did_objects import Key
 from walytis_identities.group_did_manager import GroupDidManager
 from walytis_identities.key_store import KeyStore
+import walytis_identities
+if not _testing_utils.WE_ARE_IN_DOCKER:
+
+    _testing_utils.assert_is_loaded_from_source(
+        source_dir=os.path.join(
+            os.path.abspath(
+                __file__), "..", "..", "..","..", "Brenthy","Deployment","walytis_beta_embedded"
+        ),
+        module=walytis_beta_embedded
+    )
+    _testing_utils.assert_is_loaded_from_source(
+        source_dir=os.path.join(
+            os.path.abspath(
+                __file__), "..", "..", "..", "walytis_identities", "src"
+        ),
+        module=walytis_identities
+    )
+
 os.chdir(os.path.dirname(__file__))
 config_dir_1 = tempfile.mkdtemp()
 config_dir_2 = tempfile.mkdtemp()
@@ -61,7 +80,7 @@ def extract_tar_to_directory(tar_path, dest_dir):
 
 
 def create_did_managers():
-    print("Creating DidManagers...")
+    print("Creating KeyStores...")
     member_1_keystore = KeyStore(
         os.path.join(config_dir_1, "member_keys.json"), key
     )
@@ -69,9 +88,13 @@ def create_did_managers():
         os.path.join(config_dir_2, "member_keys.json"), key
     )
 
+    print("Creating DidManager 1...")
     member_1_did_manager = DidManager.create(member_1_keystore)
+    print("Creating DidManager 2    ...")
     member_2_did_manager = DidManager.create(member_2_keystore)
 
+    
+    print("Creating GroupDidManagers...")
     group_1_keystore = KeyStore(
         os.path.join(config_dir_1, "group_keys.json"), key
     )
@@ -81,6 +104,9 @@ def create_did_managers():
     group_did_manager_1 = GroupDidManager.create(
         group_1_keystore, member_1_did_manager
     )
+    from time import sleep
+    sleep(2)
+    print("Inviting member...")
     invitation = group_did_manager_1.invite_member()
     group_did_manager_2 = GroupDidManager.join(
         invitation, group_2_keystore, member_2_did_manager
@@ -88,8 +114,8 @@ def create_did_managers():
     group_did_manager_2.unlock(
         group_did_manager_1.get_control_key().private_key
     )
-    print("Unlocked joined GroupDidManager instance.")
 
+    print("Copying blockchain data...")
     shutil.copy(
         group_did_manager_1.blockchain.get_blockchain_data(),
         os.path.join(config_dir_1, "group_blockchain.zip")
