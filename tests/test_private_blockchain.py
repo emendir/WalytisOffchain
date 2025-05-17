@@ -7,7 +7,7 @@ import _testing_utils
 import walytis_offchain
 import pytest
 import walytis_identities
-import walytis_beta_embedded._walytis_beta.walytis_beta_api as waly
+import walytis_beta_api as waly
 from _testing_utils import mark, test_threads_cleanup
 from walytis_offchain import PrivateBlockchain
 from walytis_identities.did_manager import DidManager

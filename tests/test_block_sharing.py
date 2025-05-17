@@ -5,7 +5,7 @@ import os
 import walytis_offchain
 import pytest
 import walytis_identities
-import walytis_beta_embedded._walytis_beta.walytis_beta_api as waly
+import walytis_beta_api as waly
 from _testing_utils import mark, test_threads_cleanup
 from prebuilt_group_did_managers import (
     load_did_manager,
@@ -132,7 +132,7 @@ sys.path.insert(0, '/opt/PriBlocks/tests')
 import _testing_utils # load walytis and IPFS properly
 from walytis_offchain import PrivateBlockchain
 import test_block_sharing
-import walytis_beta_embedded._walytis_beta.walytis_beta_api as waly
+import walytis_beta_api as waly
 import threading
 from time import sleep
 from walytis_identities.utils import logger

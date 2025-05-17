@@ -5,7 +5,7 @@ import tarfile
 import tempfile
 from datetime import datetime
 
-import walytis_beta_embedded._walytis_beta.walytis_beta_api as waly
+import walytis_beta_api as waly
 import walytis_beta_embedded
 from walytis_identities.did_manager import (
     KEYSTORE_DID,
@@ -21,7 +21,7 @@ if not _testing_utils.WE_ARE_IN_DOCKER:
     _testing_utils.assert_is_loaded_from_source(
         source_dir=os.path.join(
             os.path.abspath(
-                __file__), "..", "..", "..","..", "Brenthy","Deployment","walytis_beta_embedded"
+                __file__), "..", "..", "..","..", "Brenthy", "Brenthy","blockchains","Walytis_Beta", "legacy_packaging","walytis_beta_embedded"
         ),
         module=walytis_beta_embedded
     )
