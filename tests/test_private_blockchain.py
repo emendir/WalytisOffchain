@@ -27,7 +27,6 @@ _testing_utils.assert_is_loaded_from_source(
 )
 
 
-waly.log.PRINT_DEBUG = False
 
 
 REBUILD_DOCKER = True

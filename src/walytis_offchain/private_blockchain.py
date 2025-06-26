@@ -8,7 +8,7 @@ from walytis_beta_embedded import ipfs
 from walytis_identities.did_manager_with_supers import DidManagerWithSupers
 from walytis_identities.did_manager_blocks import MemberJoiningBlock
 from typing import Callable
-from loguru import logger
+from .log import logger_waloff as logger
 import walytis_beta_api
 from walytis_beta_embedded import ipfs
 
@@ -19,7 +19,6 @@ from walytis_beta_api._experimental.generic_blockchain import GenericBlock, Gene
 from walytis_identities.did_manager import blockchain_id_from_did
 from . import blockstore
 from .data_block import DataBlock, DataBlocksList
-# from loguru import logger
 COMMS_TIMEOUT_S = 30
 MIN_BLOCK_AGE_S = 5
 

@@ -16,7 +16,7 @@ from priblocks_docker.priblocks_docker import (
 )
 from time import sleep
 from walytis_offchain import PrivateBlockchain
-from walytis_identities.utils import logger
+from loguru import logger
 
 if not _testing_utils.WE_ARE_IN_DOCKER:
     _testing_utils.assert_is_loaded_from_source(
@@ -38,7 +38,6 @@ print(coloured(
     "yellow"
 ))
 
-waly.log.PRINT_DEBUG = False
 
 
 REBUILD_DOCKER = True
@@ -135,7 +134,7 @@ import test_block_sharing
 import walytis_beta_api as waly
 import threading
 from time import sleep
-from walytis_identities.utils import logger
+from loguru import logger
 
 import test_block_sharing
 from test_block_sharing import pytest

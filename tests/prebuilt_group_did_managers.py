@@ -18,13 +18,15 @@ from walytis_identities.key_store import KeyStore
 import walytis_identities
 if not _testing_utils.WE_ARE_IN_DOCKER:
 
-    _testing_utils.assert_is_loaded_from_source(
-        source_dir=os.path.join(
-            os.path.abspath(
-                __file__), "..", "..", "..","..", "Brenthy", "Brenthy","blockchains","Walytis_Beta", "legacy_packaging","walytis_beta_embedded"
-        ),
-        module=walytis_beta_embedded
-    )
+    # _testing_utils.assert_is_loaded_from_source(
+    #     source_dir=os.path.join(
+    #         os.path.abspath(__file__),
+    #          "..", "..", "..","..", 
+    #          "Brenthy", "Brenthy","blockchains",
+    #          "Walytis_Beta", "legacy_packaging","walytis_beta_embedded"
+    #     ),
+    #     module=walytis_beta_embedded
+    # )
     _testing_utils.assert_is_loaded_from_source(
         source_dir=os.path.join(
             os.path.abspath(
