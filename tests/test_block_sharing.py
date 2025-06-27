@@ -164,7 +164,7 @@ while len(threading.enumerate()) > 1:
     sleep(1)
 '''
     pytest.containers[0].run_python_code(
-        python_code, print_output=True, background=False)
+        python_code, print_output=False, background=False)
 
     mark(
         pytest.pri_blockchain.get_num_blocks(
