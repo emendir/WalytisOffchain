@@ -1,4 +1,4 @@
-FROM local/priblocks_prereqs:latest
+FROM local/waloff_prereqs:latest
 WORKDIR /opt/PriBlocks
 COPY . /opt/PriBlocks
 
@@ -8,4 +8,4 @@ RUN mkdir /opt/PB_TestIdentity
 
 # RUN pip show priblocks
 ## Run with:
-# docker run -it --privileged local/priblocks_testing
+# docker run -it --privileged local/waloff_testing

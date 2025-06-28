@@ -21,7 +21,7 @@ _testing_utils.assert_is_loaded_from_source(
 )
 _testing_utils.assert_is_loaded_from_source(
     source_dir=os.path.join(
-        os.path.abspath(__file__), "..", "..", "..", "walytis_identities", "src"
+        os.path.abspath(__file__), "..", "..", "..", "WalytisIdentities", "src"
     ),
     module=walytis_identities
 )

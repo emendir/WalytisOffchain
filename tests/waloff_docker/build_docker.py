@@ -14,7 +14,7 @@ def build_docker_image(verbose: bool = True) -> None:
     print(
         coloured(
             (
-                "DON'T FORGET to update the priblocks_prereqs docker image "
+                "DON'T FORGET to update the waloff_prereqs docker image "
                 "if you've introduced new dependency packages!"
             ),
             "yellow",
@@ -26,7 +26,7 @@ def build_docker_image(verbose: bool = True) -> None:
     if not verbose:
         args_str += " >/dev/null"
     builder_script_path = os.path.join(
-        os.path.dirname(__file__), "build_priblocks_testing.sh"
+        os.path.dirname(__file__), "build_waloff_testing.sh"
     )
     exit_code = os.system(builder_script_path + args_str)
     if exit_code != 0:

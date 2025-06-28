@@ -10,7 +10,7 @@ from _testing_utils import mark, test_threads_cleanup
 from prebuilt_group_did_managers import (
     load_did_manager,
 )
-from priblocks_docker.priblocks_docker import (
+from waloff_docker.waloff_docker import (
     PriBlocksDocker,
     delete_containers,
 )
@@ -26,7 +26,7 @@ if not _testing_utils.WE_ARE_IN_DOCKER:
     _testing_utils.assert_is_loaded_from_source(
         source_dir=os.path.join(
             os.path.abspath(
-                __file__), "..", "..", "..", "walytis_identities", "src"
+                __file__), "..", "..", "..", "WalytisIdentities", "src"
         ),
         module=walytis_identities
     )
@@ -52,10 +52,10 @@ if _testing_utils.WE_ARE_IN_DOCKER:
 
 def test_preparations():
     if DELETE_ALL_BRENTHY_DOCKERS:
-        delete_containers(image="local/priblocks_testing")
+        delete_containers(image="local/waloff_testing")
 
     if REBUILD_DOCKER:
-        from priblocks_docker.build_docker import build_docker_image
+        from waloff_docker.build_docker import build_docker_image
 
         build_docker_image(verbose=False)
     pytest.group_did_manager = None

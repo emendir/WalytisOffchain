@@ -15,7 +15,7 @@ from brenthy_docker import BrenthyDocker, delete_containers
 class PriBlocksDocker(BrenthyDocker):
     def __init__(
         self,
-        image: str = "local/priblocks_testing",
+        image: str = "local/waloff_testing",
         **kwargs
     ):
         BrenthyDocker.__init__(self, image=image, **kwargs)

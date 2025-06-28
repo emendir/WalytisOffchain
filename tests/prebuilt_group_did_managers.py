@@ -30,7 +30,7 @@ if not _testing_utils.WE_ARE_IN_DOCKER:
     _testing_utils.assert_is_loaded_from_source(
         source_dir=os.path.join(
             os.path.abspath(
-                __file__), "..", "..", "..", "walytis_identities", "src"
+                __file__), "..", "..", "..", "WalytisIdentities", "src"
         ),
         module=walytis_identities
     )
