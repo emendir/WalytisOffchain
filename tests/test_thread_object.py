@@ -1,12 +1,9 @@
+import _auto_run_with_pytest
 import os
 import sys
 import threading
-import _testing_utils
 import walytis_offchain
 from walytis_offchain.threaded_object import DedicatedThreadClass, run_on_dedicated_thread
-_testing_utils.assert_is_loaded_from_source(
-    source_dir=os.path.dirname(os.path.dirname(__file__)), module=walytis_offchain
-)
 
 thr = threading.current_thread()
 thr.ident
@@ -22,8 +19,9 @@ class TestClass(DedicatedThreadClass):
     def termiante(self):
         DedicatedThreadClass.terminate()
 
-test_obj = TestClass()
-sum, thread_id = test_obj.add(2, 3)
-print(sum)
-test_obj.terminate()
-assert sum == 5 and thread_id != threading.current_thread().ident
+def test_thread_object():
+    test_obj = TestClass()
+    sum, thread_id = test_obj.add(2, 3)
+    print(sum)
+    test_obj.terminate()
+    assert sum == 5 and thread_id != threading.current_thread().ident

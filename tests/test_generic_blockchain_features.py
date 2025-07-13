@@ -1,7 +1,6 @@
 import os
 import tempfile
 
-import _testing_utils
 import walytis_offchain
 import pytest
 import walytis_identities
@@ -12,61 +11,51 @@ from walytis_identities.group_did_manager import GroupDidManager
 from walytis_identities.key_store import KeyStore
 from walytis_beta_api._experimental import generic_blockchain_testing
 from walytis_beta_api._experimental.generic_blockchain_testing import (
-    test_generic_blockchain,
-)
-
-_testing_utils.assert_is_loaded_from_source(
-    source_dir=os.path.dirname(os.path.dirname(__file__)),
-    module=walytis_offchain
-)
-_testing_utils.assert_is_loaded_from_source(
-    source_dir=os.path.join(
-        os.path.abspath(__file__), "..", "..", "..", "WalytisIdentities", "src"
-    ),
-    module=walytis_identities
+    run_generic_blockchain_test,
 )
 
 
+
+class SharedData():
+    pass
+shared_data = SharedData()
 def test_preparations():
-    pytest.did_config_dir = tempfile.mkdtemp()
-    pytest.key_store_path = os.path.join(
-        pytest.did_config_dir, "master_keystore.json")
+    shared_data.did_config_dir = tempfile.mkdtemp()
+    shared_data.key_store_path = os.path.join(
+        shared_data.did_config_dir, "master_keystore.json")
 
     # the cryptographic family to use for the tests
-    pytest.CRYPTO_FAMILY = "EC-secp256k1"
-    pytest.KEY = Key.create(pytest.CRYPTO_FAMILY)
+    shared_data.CRYPTO_FAMILY = "EC-secp256k1"
+    shared_data.KEY = Key.create(shared_data.CRYPTO_FAMILY)
 
     device_keystore_path = os.path.join(
-        pytest.did_config_dir, "device_keystore.json")
+        shared_data.did_config_dir, "device_keystore.json")
     profile_keystore_path = os.path.join(
-        pytest.did_config_dir, "profile_keystore.json")
+        shared_data.did_config_dir, "profile_keystore.json")
 
-    device_did_keystore = KeyStore(device_keystore_path, pytest.KEY)
-    profile_did_keystore = KeyStore(profile_keystore_path, pytest.KEY)
-    pytest.member_1 = DidManager.create(device_did_keystore)
-    pytest.group_did_manager = GroupDidManager.create(
-        profile_did_keystore, pytest.member_1
+    device_did_keystore = KeyStore(device_keystore_path, shared_data.KEY)
+    profile_did_keystore = KeyStore(profile_keystore_path, shared_data.KEY)
+    shared_data.member_1 = DidManager.create(device_did_keystore)
+    shared_data.group_did_manager = GroupDidManager.create(
+        profile_did_keystore, shared_data.member_1
     )
 
 
 
-def test_cleanup():
-    pytest.private_blockchain.delete()
-    pytest.group_did_manager.delete()
-
 
 def test_generic_blockchain_features():
-    pytest.private_blockchain = test_generic_blockchain(
-        PrivateBlockchain, group_blockchain=pytest.group_did_manager)
+    shared_data.private_blockchain = run_generic_blockchain_test(
+        PrivateBlockchain, group_blockchain=shared_data.group_did_manager)
 
 
-def run_tests():
-    test_preparations()
-    test_generic_blockchain_features()
-    test_cleanup()
+def cleanup():
+    if shared_data.private_blockchain:
+        shared_data.private_blockchain.delete()
+    if shared_data.group_did_manager:
+        shared_data.group_did_manager.delete()
 
-
-if __name__ == "__main__":
-    generic_blockchain_testing.PYTEST = False
-    generic_blockchain_testing.BREAKPOINTS=True
-    run_tests()
+from emtest import await_thread_cleanup
+def test_threads_cleanup() -> None:
+    """Test that no threads are left running."""
+    cleanup()
+    assert await_thread_cleanup(timeout=5)

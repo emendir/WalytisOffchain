@@ -1,4 +1,4 @@
-import _testing_utils
+import conftest  # noqa
 import os
 import shutil
 import tarfile
@@ -6,7 +6,6 @@ import tempfile
 from datetime import datetime
 
 import walytis_beta_api as waly
-import walytis_beta_embedded
 from walytis_identities.did_manager import (
     KEYSTORE_DID,
     DidManager,
@@ -15,25 +14,6 @@ from walytis_identities.did_manager import (
 from walytis_identities.did_objects import Key
 from walytis_identities.group_did_manager import GroupDidManager
 from walytis_identities.key_store import KeyStore
-import walytis_identities
-if not _testing_utils.WE_ARE_IN_DOCKER:
-
-    # _testing_utils.assert_is_loaded_from_source(
-    #     source_dir=os.path.join(
-    #         os.path.abspath(__file__),
-    #          "..", "..", "..","..", 
-    #          "Brenthy", "Brenthy","blockchains",
-    #          "Walytis_Beta", "legacy_packaging","walytis_beta_embedded"
-    #     ),
-    #     module=walytis_beta_embedded
-    # )
-    _testing_utils.assert_is_loaded_from_source(
-        source_dir=os.path.join(
-            os.path.abspath(
-                __file__), "..", "..", "..", "WalytisIdentities", "src"
-        ),
-        module=walytis_identities
-    )
 
 os.chdir(os.path.dirname(__file__))
 config_dir_1 = tempfile.mkdtemp()
@@ -95,7 +75,6 @@ def create_did_managers():
     print("Creating DidManager 2    ...")
     member_2_did_manager = DidManager.create(member_2_keystore)
 
-    
     print("Creating GroupDidManagers...")
     group_1_keystore = KeyStore(
         os.path.join(config_dir_1, "group_keys.json"), key
@@ -145,11 +124,11 @@ def create_did_managers():
     print("Created appdata tar files.")
 
 
-def load_did_manager(tarfile:str):
-    """Load some of the """
+def load_did_manager(tarfile: str):
+    """Load some of the"""
     appdata_path = tempfile.mkdtemp()
-    
-    extract_tar_to_directory(tarfile,appdata_path)
+
+    extract_tar_to_directory(tarfile, appdata_path)
 
     # join the group_did_manager' blockchains
     group_keystore = KeyStore(os.path.join(
@@ -183,4 +162,3 @@ def load_did_manager(tarfile:str):
 
 if __name__ == "__main__":
     create_did_managers()
-    _testing_utils.terminate()

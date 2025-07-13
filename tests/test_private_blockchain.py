@@ -1,117 +1,83 @@
+import _auto_run_with_pytest
 import os
 import shutil
 import tempfile
 import threading
 
-import _testing_utils
 import walytis_offchain
-import pytest
 import walytis_identities
 import walytis_beta_api as waly
-from _testing_utils import mark, test_threads_cleanup
 from walytis_offchain import PrivateBlockchain
 from walytis_identities.did_manager import DidManager
 from walytis_identities.did_objects import Key
 from walytis_identities.group_did_manager import GroupDidManager
 from walytis_identities.key_store import KeyStore
 
-_testing_utils.assert_is_loaded_from_source(
-    source_dir=os.path.dirname(os.path.dirname(__file__)),
-    module=walytis_offchain
-)
-_testing_utils.assert_is_loaded_from_source(
-    source_dir=os.path.join(
-        os.path.abspath(__file__), "..", "..", "..", "WalytisIdentities", "src"
-    ),
-    module=walytis_identities
-)
 
 
 
 
 REBUILD_DOCKER = True
 
-# automatically remove all docker containers after failed tests
-DELETE_ALL_BRENTHY_DOCKERS = True
-if _testing_utils.WE_ARE_IN_DOCKER:
-    REBUILD_DOCKER = False
-    DELETE_ALL_BRENTHY_DOCKERS = False
 
 
-def test_preparations() -> None:
-    """Setup resources in preparation for tests."""
-    # declare 'global' variables
-    pytest.did_config_dir = tempfile.mkdtemp()
-    pytest.key_store_path = os.path.join(
-        pytest.did_config_dir, "master_keystore.json")
+class SharedData():
+    def __init__(self):
+        """Setup resources in preparation for tests."""
+        # declare 'global' variables
+        self.did_config_dir = tempfile.mkdtemp()
+        self.key_store_path = os.path.join(
+            self.did_config_dir, "master_keystore.json")
 
-    # the cryptographic family to use for the tests
-    pytest.CRYPTO_FAMILY = "EC-secp256k1"
-    pytest.KEY = Key.create(pytest.CRYPTO_FAMILY)
+        # the cryptographic family to use for the tests
+        self.CRYPTO_FAMILY = "EC-secp256k1"
+        self.KEY = Key.create(self.CRYPTO_FAMILY)
 
-    pytest.group_did_manager = None
-    pytest.pri_blockchain = None
-
-
-threading.enumerate()
+        self.group_did_manager = None
+        self.pri_blockchain = None
 
 
-def test_terminate():
-    pytest.pri_blockchain.terminate()
+shared_data = SharedData()
+
 
 
 def cleanup():
-    if pytest.pri_blockchain:
-        pytest.pri_blockchain.delete()
-    shutil.rmtree(pytest.did_config_dir)
+    if shared_data.pri_blockchain:
+        shared_data.pri_blockchain.delete()
+    shutil.rmtree(shared_data.did_config_dir)
 
 
 HELLO_THERE = "Hello there!".encode()
 
 
-def create_private_blockchain() -> None:
+def test_create_private_blockchain() -> None:
     device_keystore_path = os.path.join(
-        pytest.did_config_dir, "device_keystore.json")
+        shared_data.did_config_dir, "device_keystore.json")
     profile_keystore_path = os.path.join(
-        pytest.did_config_dir, "profile_keystore.json")
+        shared_data.did_config_dir, "profile_keystore.json")
 
-    device_did_keystore = KeyStore(device_keystore_path, pytest.KEY)
-    profile_did_keystore = KeyStore(profile_keystore_path, pytest.KEY)
-    pytest.member_1 = DidManager.create(device_did_keystore)
-    pytest.group_did_manager = GroupDidManager.create(
-        profile_did_keystore, pytest.member_1
+    device_did_keystore = KeyStore(device_keystore_path, shared_data.KEY)
+    profile_did_keystore = KeyStore(profile_keystore_path, shared_data.KEY)
+    shared_data.member_1 = DidManager.create(device_did_keystore)
+    shared_data.group_did_manager = GroupDidManager.create(
+        profile_did_keystore, shared_data.member_1
     )
 
-    pytest.pri_blockchain = PrivateBlockchain(pytest.group_did_manager)
-    mark(
-        isinstance(pytest.pri_blockchain, PrivateBlockchain),
-        "Create GroupDidManager"
-    )
+    shared_data.pri_blockchain = PrivateBlockchain(shared_data.group_did_manager)
+    assert isinstance(shared_data.pri_blockchain, PrivateBlockchain), "Create GroupDidManager"
 
 
 def test_add_block():
     """Test that we can create a PrivateBlockchain and add a block."""
     print("Creating private blockchain...")
-    block = pytest.pri_blockchain.add_block(HELLO_THERE)
-    blockchain_blocks = list(pytest.pri_blockchain.get_blocks())
-    mark(
-        blockchain_blocks and
-        blockchain_blocks[-1].content == block.content == HELLO_THERE,
-        "Created private blockchain, added block"
-    )
+    block = shared_data.pri_blockchain.add_block(HELLO_THERE)
+    blockchain_blocks = list(shared_data.pri_blockchain.get_blocks())
+    assert blockchain_blocks and blockchain_blocks[-1].content == block.content == HELLO_THERE, "Created private blockchain, added block"
 
 
-def run_tests():
-    print("\nRunning tests for Private Blockchain:")
-    test_preparations()
-    create_private_blockchain()
-    test_add_block()
-    test_terminate()
-    test_threads_cleanup()
+from emtest import await_thread_cleanup
+def test_threads_cleanup() -> None:
+    """Test that no threads are left running."""
     cleanup()
+    assert await_thread_cleanup(timeout=5)
 
-
-if __name__ == "__main__":
-    _testing_utils.PYTEST = False
-    _testing_utils.BREAKPOINTS = True
-    run_tests()

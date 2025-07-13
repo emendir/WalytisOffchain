@@ -1,4 +1,4 @@
-FROM local/walytis_auth_testing:latest
+FROM local/walid_testing:latest
 WORKDIR /opt/PriBlocks
 COPY . /opt/PriBlocks
 
