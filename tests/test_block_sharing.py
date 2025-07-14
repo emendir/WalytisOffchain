@@ -1,23 +1,19 @@
-import _auto_run_with_pytest
-from termcolor import colored as coloured
 import os
 
-import walytis_offchain
-import pytest
-import walytis_identities
-import walytis_beta_api as waly
+from docker_block_sharing import HELLO_THERE, HI
+from emtest import await_thread_cleanup, env_vars
+from loguru import logger
 from prebuilt_group_did_managers import (
     load_did_manager,
 )
+from termcolor import colored as coloured
 from waloff_docker.waloff_docker import (
     PriBlocksDocker,
     delete_containers,
 )
-from time import sleep
-from walytis_offchain import PrivateBlockchain
-from loguru import logger
-from walytis_offchain.log import logger_waloff as logger
 
+from walytis_offchain import PrivateBlockchain
+from walytis_offchain.log import logger_waloff as logger
 
 print(coloured(
     "Ensure GroupDidManager tar files were created with the same IPFS node "
@@ -26,15 +22,19 @@ print(coloured(
 ))
 
 
-
 REBUILD_DOCKER = True
+REBUILD_DOCKER = env_vars.bool("TESTS_REBUILD_DOCKER", default=REBUILD_DOCKER)
 DOCKER_NAME = "priblock_sync_test"
+
+
 class SharedData():
     pass
+
+
 shared_data = SharedData()
 logger.info("Initialised shared_data.")
 
-from emtest import are_we_in_docker
+
 def test_preparations():
     logger.info("Deleting old docker containers...")
     delete_containers(image="local/waloff_testing")
@@ -58,12 +58,11 @@ def test_preparations():
     ))
 
 
-
 def test_create_docker_containers():
     logger.info("Creating docker containers...")
     for i in range(1):
         shared_data.containers.append(PriBlocksDocker(
-            container_name=f"{DOCKER_NAME}_{i}"))
+            container_name=f"{DOCKER_NAME}0{i}"))
 
 
 def cleanup():
@@ -77,24 +76,23 @@ def cleanup():
         shared_data.pri_blockchain.delete()
 
 
-from docker_block_sharing import HI, HELLO_THERE
-
 def test_load_blockchain():
     """Test that we can create a PrivateBlockchain and add a block."""
     logger.debug("Creating private blockchain...")
-    shared_data.pri_blockchain = PrivateBlockchain(shared_data.group_did_manager)
+    shared_data.pri_blockchain = PrivateBlockchain(
+        shared_data.group_did_manager)
     assert True, "Created private blockchain"
 
 
 def test_add_block():
     block = shared_data.pri_blockchain.add_block(HELLO_THERE)
     blockchain_blocks = list(shared_data.pri_blockchain.get_blocks())
-    assert  blockchain_blocks and blockchain_blocks[-1].content == block.content == HELLO_THERE, "Added block"
+    assert blockchain_blocks and blockchain_blocks[-1].content == block.content == HELLO_THERE, "Added block"
 
 
 def test_block_synchronisation():
     """Test that the previously created block is available in the container."""
-    python_code = f'''
+    python_code = '''
 import sys
 sys.path.insert(0, '/opt/walytis_identities/src')
 sys.path.insert(0, '/opt/PriBlocks/src')
@@ -115,12 +113,10 @@ docker_block_sharing.docker_part()
     shared_data.containers[0].run_python_code(
         python_code, print_output=True, background=False)
 
-    assert  shared_data.pri_blockchain.get_num_blocks() > 0 and shared_data.pri_blockchain.get_block(-1).content == HI, "Synchronised block"
+    assert shared_data.pri_blockchain.get_num_blocks(
+    ) > 0 and shared_data.pri_blockchain.get_block(-1).content == HI, "Synchronised block"
 
 
-from docker_block_sharing import SYNC_DUR
-
-from emtest import await_thread_cleanup
 def test_threads_cleanup() -> None:
     """Test that no threads are left running."""
     cleanup()
