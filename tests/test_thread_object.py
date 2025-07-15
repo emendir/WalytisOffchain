@@ -1,12 +1,6 @@
-import _auto_run_with_pytest
-import os
-import sys
+import _auto_run_with_pytest  # noqa
 import threading
-import walytis_offchain
 from walytis_offchain.threaded_object import DedicatedThreadClass, run_on_dedicated_thread
-
-thr = threading.current_thread()
-thr.ident
 
 
 class TestClass(DedicatedThreadClass):
@@ -25,3 +19,4 @@ def test_thread_object():
     print(sum)
     test_obj.terminate()
     assert sum == 5 and thread_id != threading.current_thread().ident
+    
