@@ -15,10 +15,14 @@ from walytis_beta_embedded import ipfs
 from walytis_identities.did_manager import DidManager
 from walytis_identities.group_did_manager import GroupDidManager
 from walytis_beta_api import decode_short_id
-from walytis_beta_api._experimental.generic_blockchain import GenericBlock, GenericBlockchain
+from walytis_beta_api._experimental.generic_blockchain import (
+    GenericBlock,
+    GenericBlockchain,
+)
 from walytis_identities.did_manager import blockchain_id_from_did
 from . import blockstore
 from .data_block import DataBlock, DataBlocksList
+
 COMMS_TIMEOUT_S = 30
 MIN_BLOCK_AGE_S = 5
 
@@ -38,7 +42,6 @@ class PrivateBlockchain(blockstore.BlockStore, GenericBlockchain):
         forget_appdata: bool = False,
         sequential_block_handling: bool = True,
         update_blockids_before_handling: bool = False,
-
     ):
         """Initialise a PrivateBlockchain object.
 
@@ -80,12 +83,10 @@ class PrivateBlockchain(blockstore.BlockStore, GenericBlockchain):
         self.block_received_handler = block_received_handler
         self.other_blocks_handler = other_blocks_handler
         if not virtual_layer_name:
-            raise ValueError(
-                "`virtual_layer_name` cannot be empty!"
-            )
+            raise ValueError("`virtual_layer_name` cannot be empty!")
         self.content_request_listener = ipfs.listen_for_conversations(
             listener_name=f"PrivateBlocks{self.base_blockchain.blockchain_id}",
-            eventhandler=self.handle_content_request
+            eventhandler=self.handle_content_request,
         )
 
         self.base_blockchain.block_received_handler = self._on_block_received
@@ -111,7 +112,8 @@ class PrivateBlockchain(blockstore.BlockStore, GenericBlockchain):
                     blocks_to_find.append(block)
         self._blocks_to_find = blocks_to_find
         self._blocks = DataBlocksList.from_blocks(
-            known_blocks, self, DataBlock)
+            known_blocks, self, DataBlock
+        )
 
     def load_missed_blocks(self):
         self.base_blockchain.load_missed_blocks()
@@ -167,12 +169,13 @@ class PrivateBlockchain(blockstore.BlockStore, GenericBlockchain):
             topics = [topics]
         signature = self.group_blockchain.member_did_manager.sign(content)
         block_content = (
-            self.group_blockchain.member_did_manager.did.encode() +
-            bytearray([0]) + signature
+            self.group_blockchain.member_did_manager.did.encode()
+            + bytearray([0])
+            + signature
         )
         if self.virtual_layer_name:
             topics = [self.virtual_layer_name] + topics
-        
+
         base_block = self.base_blockchain.add_block(block_content, topics)
         block = DataBlock(base_block, content, author=self.group_blockchain)
         self.store_block_content(block.long_id, content)
@@ -195,7 +198,9 @@ class PrivateBlockchain(blockstore.BlockStore, GenericBlockchain):
         else:
             self._blocks_to_find.append(block)
 
-    def _on_private_block_received(self, block: GenericBlock, private_content: bytes):
+    def _on_private_block_received(
+        self, block: GenericBlock, private_content: bytes
+    ):
         author_did = self.get_block_author_did(block)
 
         # create PriBlock object from block and private content
@@ -230,16 +235,17 @@ class PrivateBlockchain(blockstore.BlockStore, GenericBlockchain):
         i = block.content.index(bytearray([0]))
         author_did = block.content[:i].decode()
         author_blockchain_id = blockchain_id_from_did(author_did)
-        signature = block.content[i + 1:]
+        signature = block.content[i + 1 :]
 
         # look for MemberJoiningBlock for the author
         joins = [
-            MemberJoiningBlock.load_from_block_content(block.content).get_member(
-            ) for block in self.group_blockchain.get_member_joining_blocks()
+            MemberJoiningBlock.load_from_block_content(
+                block.content
+            ).get_member()
+            for block in self.group_blockchain.get_member_joining_blocks()
         ]
         invitations = [
-            join['invitation']
-            for join in joins if join['did'] == author_did
+            join["invitation"] for join in joins if join["did"] == author_did
         ]
         if not invitations:
             logger.error("Can't find block author's MemberJoiningBlock")
@@ -254,7 +260,10 @@ class PrivateBlockchain(blockstore.BlockStore, GenericBlockchain):
                     pass
                 except walytis_beta_api.BlockchainAlreadyExistsError:
                     pass
-            if author_blockchain_id not in walytis_beta_api.list_blockchain_ids():
+            if (
+                author_blockchain_id
+                not in walytis_beta_api.list_blockchain_ids()
+            ):
                 logger.error("Couldn't join block author's DidManager")
                 logger.error(invitation)
                 return None
@@ -274,7 +283,8 @@ class PrivateBlockchain(blockstore.BlockStore, GenericBlockchain):
         while not private_content:
             if self._terminate:
                 logger.debug(
-                    "Exiting ask_around_for_content because of termination")
+                    "Exiting ask_around_for_content because of termination"
+                )
                 return None
             if not self.check_unlocked():
                 sleep(1)
@@ -305,7 +315,7 @@ class PrivateBlockchain(blockstore.BlockStore, GenericBlockchain):
                     conv = ipfs.start_conversation(
                         f"PrivateBlocks: ContentRequest: {block.ipfs_cid}",
                         peer,
-                        self.content_request_listener._listener_name
+                        self.content_request_listener._listener_name,
                     )
                     conv.say(block.long_id, COMMS_TIMEOUT_S)
                     response = conv.listen(COMMS_TIMEOUT_S)
@@ -314,29 +324,35 @@ class PrivateBlockchain(blockstore.BlockStore, GenericBlockchain):
                         continue
                     try:
                         decoded_response = self.group_blockchain.decrypt(
-                            response)
+                            response
+                        )
                     except multi_crypt.crypt.LockedError:
                         logger.error(
                             f"CRYPT LOCKED for {self.group_blockchain.did}"
                         )
                         continue
-                    if author_did_manager.verify_signature(signature, decoded_response):
+                    if author_did_manager.verify_signature(
+                        signature, decoded_response
+                    ):
                         private_content = decoded_response
                         self.store_block_content(
-                            block.long_id, private_content)
+                            block.long_id, private_content
+                        )
                         logger.debug("Received and verified private content")
                         break
                     else:
                         logger.error(
-                            "WARNING: private content signature verification failed")
+                            "WARNING: private content signature verification failed"
+                        )
             except Exception as error:
-
                 logger.error(error)
                 import traceback
+
                 traceback.print_exc()
             if self._terminate:
                 logger.debug(
-                    "Exiting ask_around_for_content because of termination")
+                    "Exiting ask_around_for_content because of termination"
+                )
                 return None
             sleep(1)
         self.store_block_content(block.long_id, private_content)
