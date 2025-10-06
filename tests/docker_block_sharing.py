@@ -1,4 +1,4 @@
-
+from emtest import are_we_in_docker
 from termcolor import colored as coloured
 import os
 
@@ -15,17 +15,23 @@ from waloff_docker.waloff_docker import (
 )
 from time import sleep
 from walytis_offchain import PrivateBlockchain
-from loguru import logger
 from walytis_offchain.log import logger_waloff as logger
 import threading
+import logging
+
+logger.setLevel(logging.DEBUG)
 
 SYNC_DUR = 30
-class SharedData():
+
+
+class SharedData:
     pass
+
+
 shared_data = SharedData()
 logger.info("Initialised shared_data.")
 
-from emtest import are_we_in_docker
+
 def test_preparations():
     shared_data.group_did_manager = None
     shared_data.pri_blockchain = None
@@ -36,21 +42,25 @@ def test_preparations():
     logger.info("Loading GDMs from tar files...")
     # choose which group_did_manager to load
     tarfile = "group_did_manager_1.tar"
-    shared_data.group_did_manager = load_did_manager(os.path.join(
-        os.path.dirname(__file__),
-        tarfile
-    ))
+    shared_data.group_did_manager = load_did_manager(
+        os.path.join(os.path.dirname(__file__), tarfile)
+    )
 
     # in docker, update the MemberJoiningBlock to include the new
     logger.debug("Updating MemberJoiningBlock")
     shared_data.group_did_manager.add_member(
-        shared_data.group_did_manager.member_did_manager)
+        shared_data.group_did_manager.member_did_manager
+    )
+
 
 HI = "Hi!".encode()
 HELLO_THERE = "Hello there!".encode()
-def docker_part():
 
-    shared_data.pri_blockchain = PrivateBlockchain(shared_data.group_did_manager)
+
+def docker_part():
+    shared_data.pri_blockchain = PrivateBlockchain(
+        shared_data.group_did_manager
+    )
 
     logger.debug("Created PrivateBlockchain.")
     logger.debug(threading.enumerate())

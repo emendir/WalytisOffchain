@@ -1,3 +1,5 @@
+from walytis_identities.key_store import CodePackage
+from multi_crypt import Crypt
 import multi_crypt
 from threading import Thread
 from datetime import datetime
@@ -13,7 +15,7 @@ import walytis_beta_api
 from walytis_beta_embedded import ipfs
 
 from walytis_identities.did_manager import DidManager
-from walytis_identities.group_did_manager import GroupDidManager
+from walytis_identities.group_did_manager import GroupDidManager, Member
 from walytis_beta_api import decode_short_id
 from walytis_beta_api._experimental.generic_blockchain import (
     GenericBlock,
@@ -312,12 +314,36 @@ class PrivateBlockchain(blockstore.BlockStore, GenericBlockchain):
                     if self._terminate:
                         return None
                     logger.debug(f"Getting private content from {peer}")
-                    conv = ipfs.start_conversation(
+                    conv: ipfs.Conversation = ipfs.start_conversation(
                         f"PrivateBlocks: ContentRequest: {block.ipfs_cid}",
                         peer,
                         self.content_request_listener._listener_name,
                     )
-                    conv.say(block.long_id, COMMS_TIMEOUT_S)
+
+                    # sign some data to prove in advance that we own group and member keys
+                    signature_data = conv.others_trsm_listener.encode()
+                    signature_group = CodePackage.deserialise_bytes(
+                        self.group_blockchain.sign(signature_data)
+                    ).serialise()
+                    signature_member = CodePackage.deserialise_bytes(
+                        self.group_blockchain.member_did_manager.sign(
+                            signature_data
+                        )
+                    ).serialise()
+
+                    one_time_key = Crypt.new(
+                        self.group_blockchain.get_control_key().family
+                    )
+
+                    data = {
+                        "block_long_id": block.long_id,
+                        "one_time_key": one_time_key.get_public_key_str(),
+                        "group_key_proof": signature_group,
+                        "member_key_proof": signature_member,
+                        "member_did": self.group_blockchain.member_did_manager.did,
+                    }
+
+                    conv.say(json.dumps(data).encode(), COMMS_TIMEOUT_S)
                     response = conv.listen(COMMS_TIMEOUT_S)
                     conv.close()
                     if not response:
@@ -366,12 +392,48 @@ class PrivateBlockchain(blockstore.BlockStore, GenericBlockchain):
             peer_id,
             conv_name,
         )
-        block_id = conv.listen(timeout=COMMS_TIMEOUT_S)
-        content = self.get_block_content(block_id)
-        if content:
-            private_content = self.group_blockchain.encrypt(content)
-            conv.say(private_content, timeout_sec=COMMS_TIMEOUT_S)
-        conv.close()
+        try:
+            _request = conv.listen(timeout=COMMS_TIMEOUT_S)
+            request = json.loads(_request.decode())
+            block_id = request["block_long_id"]
+            one_time_key = request["one_time_key"]
+            group_key_proof = CodePackage.deserialise(
+                request["group_key_proof"]
+            )
+            member_key_proof = CodePackage.deserialise(
+                request["member_key_proof"]
+            )
+            member_did = request["member_did"]
+
+            # verify the signatures with which peer
+            # proves they own this group and their member keys
+            proof_base_data = conv.conv_name
+            # assert group key actually belongs to this GroupDidManager
+            self.group_blockchain.key_store.get_key_from_public(
+                group_key_proof.public_key
+            )
+            member: Member = self.group_blockchain.get_members_dict()[
+                "member_did"
+            ]
+            if not member_key_proof.public_key in [
+                key.get_public_key_str
+                for key in member._get_member_control_keys()
+            ]:
+                raise Exception("Member key not validated.")
+            if not group_key_proof.verify_signature(proof_base_data):
+                raise Exception("Group Key Proof not Validated")
+            if not member_key_proof.verify_signature(proof_base_data):
+                raise Exception("Member Key Proof not Validated")
+
+            content = self.get_block_content(block_id)
+            if content:
+                private_content = self.group_blockchain.encrypt(content)
+                conv.say(private_content, timeout_sec=COMMS_TIMEOUT_S)
+            conv.close()
+        except Exception as e:
+            logger.error("Failed to handle content request:")
+            logger.error(e)
+            conv.close()
 
     def get_peers(self) -> list[str]:
         return self.base_blockchain.get_peers()
@@ -394,8 +456,8 @@ class PrivateBlockchain(blockstore.BlockStore, GenericBlockchain):
         self._blocks_to_find_thr.join()
         logger.info("PB: TERMINATED!")
 
-    def delete(self) -> None:
-        self.terminate()
+    def delete(self, **kwargs) -> None:
+        self.terminate(**kwargs)
 
         try:
             self.group_blockchain.delete()
