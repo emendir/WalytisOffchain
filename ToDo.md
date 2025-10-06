@@ -1,0 +1,2 @@
+- [ ] triple-layer encryption: GroupDidManager, Member & spontaneous ephemeral keys
+- [ ] authorise content requests with member and group signatures
