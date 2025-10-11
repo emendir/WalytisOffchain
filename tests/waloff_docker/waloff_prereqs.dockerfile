@@ -5,7 +5,6 @@ COPY . /opt/PriBlocks
 
 RUN pip install --break-system-packages --root-user-action ignore -r /opt/PriBlocks/requirements-dev.txt
 RUN pip install --break-system-packages --root-user-action ignore -r /opt/PriBlocks/requirements.txt
-RUN pip install --break-system-packages --root-user-action ignore /opt/walytis_identities
 
 # reinstall any python packages bundled in the walytis_auth_testing docker image
 RUN for python_package in /opt/PriBlocks/tests/waloff_docker/python_packages/*; do [ -e "$python_package" ] || continue; pip install --break-system-packages --root-user-action ignore "$python_package"; done

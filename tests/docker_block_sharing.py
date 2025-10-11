@@ -58,6 +58,7 @@ HELLO_THERE = "Hello there!".encode()
 
 
 def docker_part():
+    logger.debug("Loading PrivateBlockchain...")
     shared_data.pri_blockchain = PrivateBlockchain(
         shared_data.group_did_manager
     )

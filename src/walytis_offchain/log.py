@@ -8,7 +8,7 @@ print(f"Logging to {os.path.abspath(LOG_PATH)}")
 
 # Formatter
 formatter = logging.Formatter(
-    '%(asctime)s [%(levelname)s] %(name)s: %(message)s'
+    "%(asctime)s [%(levelname)s] %(name)s: %(message)s"
 )
 
 # Console handler (INFO+)
@@ -18,7 +18,7 @@ console_handler.setFormatter(formatter)
 
 # File handler (DEBUG+ with rotation)
 file_handler = RotatingFileHandler(
-    LOG_PATH, maxBytes=5*1024*1024, backupCount=5
+    LOG_PATH, maxBytes=5 * 1024 * 1024, backupCount=5
 )
 file_handler.setLevel(logging.DEBUG)
 file_handler.setFormatter(formatter)
@@ -34,3 +34,6 @@ logger_waloff.setLevel(logging.DEBUG)
 
 logger_waloff.addHandler(file_handler)
 
+# add console_handler if needed
+if not any(type(h) == logging.StreamHandler for h in logger_waloff.handlers):
+    logger_waloff.addHandler(console_handler)

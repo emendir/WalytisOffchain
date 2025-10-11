@@ -100,16 +100,14 @@ def test_block_synchronisation():
     """Test that the previously created block is available in the container."""
     python_code = """
 import sys
-sys.path.insert(0, '/opt/walytis_identities/src')
 sys.path.insert(0, '/opt/PriBlocks/src')
 sys.path.insert(0, '/opt/PriBlocks/tests')
+
 import conftest
 from walytis_offchain import PrivateBlockchain
 import docker_block_sharing
 import walytis_beta_api as waly
 import threading
-from time import sleep
-from walytis_offchain.log import logger_waloff as logger
 
 import docker_block_sharing
 from docker_block_sharing import shared_data

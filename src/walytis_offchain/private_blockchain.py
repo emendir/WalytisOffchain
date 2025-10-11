@@ -1,4 +1,5 @@
 from walytis_identities.key_store import CodePackage
+from brenthy_tools_beta.utils import bytes_to_string, string_to_bytes
 from multi_crypt import Crypt
 import multi_crypt
 from threading import Thread
@@ -336,17 +337,21 @@ class PrivateBlockchain(blockstore.BlockStore, GenericBlockchain):
                     )
 
                     data = {
-                        "block_long_id": block.long_id,
+                        "block_long_id": bytes_to_string(block.long_id),
                         "one_time_key": one_time_key.get_public_key_str(),
                         "group_key_proof": signature_group,
                         "member_key_proof": signature_member,
                         "member_did": self.group_blockchain.member_did_manager.did,
                     }
 
+                    logger.debug("Sending private content request...")
                     conv.say(json.dumps(data).encode(), COMMS_TIMEOUT_S)
+                    logger.debug("Awaiting private content...")
                     response = conv.listen(COMMS_TIMEOUT_S)
+                    logger.debug("Got response!")
                     conv.close()
                     if not response:
+                        logger.debug("Got got empty response.")
                         continue
                     try:
                         decoded_response = self.group_blockchain.decrypt(
@@ -387,6 +392,7 @@ class PrivateBlockchain(blockstore.BlockStore, GenericBlockchain):
     def handle_content_request(self, conv_name: str, peer_id: str) -> None:
         if self._terminate:
             return
+        logger.debug("Received content request...")
         conv = ipfs.join_conversation(
             conv_name + peer_id,
             peer_id,
@@ -395,7 +401,9 @@ class PrivateBlockchain(blockstore.BlockStore, GenericBlockchain):
         try:
             _request = conv.listen(timeout=COMMS_TIMEOUT_S)
             request = json.loads(_request.decode())
-            block_id = request["block_long_id"]
+            block_id = string_to_bytes(request["block_long_id"])
+            logger.debug("Processing content request...")
+
             one_time_key = request["one_time_key"]
             group_key_proof = CodePackage.deserialise(
                 request["group_key_proof"]
@@ -407,28 +415,43 @@ class PrivateBlockchain(blockstore.BlockStore, GenericBlockchain):
 
             # verify the signatures with which peer
             # proves they own this group and their member keys
-            proof_base_data = conv.conv_name
+            proof_base_data = conv.conv_name.encode()
             # assert group key actually belongs to this GroupDidManager
             self.group_blockchain.key_store.get_key_from_public(
-                group_key_proof.public_key
+                group_key_proof.public_key, family=group_key_proof.family
             )
+            logger.debug(self.group_blockchain.get_members_dict())
             member: Member = self.group_blockchain.get_members_dict()[
-                "member_did"
+                member_did
             ]
-            if not member_key_proof.public_key in [
-                key.get_public_key_str
+            logger.debug(member_key_proof.public_key.hex())
+            logger.debug(
+                [
+                    key.get_public_key_str()
+                    for key in member._get_member_control_keys()
+                ]
+            )
+            if not member_key_proof.public_key.hex() in [
+                key.get_public_key_str()
                 for key in member._get_member_control_keys()
             ]:
                 raise Exception("Member key not validated.")
+            logger.debug("Member key validated.")
             if not group_key_proof.verify_signature(proof_base_data):
                 raise Exception("Group Key Proof not Validated")
+            logger.debug("Group key proof validated.")
             if not member_key_proof.verify_signature(proof_base_data):
                 raise Exception("Member Key Proof not Validated")
-
+            logger.debug("Verified content request. Getting content...")
             content = self.get_block_content(block_id)
+            logger.debug("Got content.")
             if content:
+                logger.debug("Encrypting content...")
                 private_content = self.group_blockchain.encrypt(content)
+                logger.debug("Transmitting content...")
                 conv.say(private_content, timeout_sec=COMMS_TIMEOUT_S)
+            else:
+                logger.debug("Didn't find requested content.")
             conv.close()
         except Exception as e:
             logger.error("Failed to handle content request:")

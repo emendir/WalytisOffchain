@@ -20,12 +20,16 @@ config_dir_1 = tempfile.mkdtemp()
 config_dir_2 = tempfile.mkdtemp()
 CRYPTO_FAMILY = "EC-secp256k1"
 
-private_key = '984f4581356d5d5c69f8461ae96ec300e0bf74d5e43050751d4f3ce92d0aeee7'
-public_key = '04736e3bfcadc1ca5b099e566003f92a1f04379c5b626ab62a52aaf85bc3a14f2c782a9961a946bc7e72f99952b00bab52fe10f9b7dfd45fc01d551b74dd7eb94b'
+private_key = (
+    "984f4581356d5d5c69f8461ae96ec300e0bf74d5e43050751d4f3ce92d0aeee7"
+)
+public_key = "04736e3bfcadc1ca5b099e566003f92a1f04379c5b626ab62a52aaf85bc3a14f2c782a9961a946bc7e72f99952b00bab52fe10f9b7dfd45fc01d551b74dd7eb94b"
 
 key = Key(
-    CRYPTO_FAMILY, public_key=public_key, private_key=private_key,
-    creation_time=datetime(2024, 11, 9, 8, 30, 58, 719382)
+    CRYPTO_FAMILY,
+    public_key=public_key,
+    private_key=private_key,
+    creation_time=datetime(2024, 11, 9, 8, 30, 58, 719382),
 )
 
 
@@ -86,6 +90,7 @@ def create_did_managers():
         group_1_keystore, member_1_did_manager
     )
     from time import sleep
+
     sleep(2)
     print("Inviting member...")
     invitation = group_did_manager_1.invite_member()
@@ -99,20 +104,20 @@ def create_did_managers():
     print("Copying blockchain data...")
     shutil.copy(
         group_did_manager_1.blockchain.get_blockchain_data(),
-        os.path.join(config_dir_1, "group_blockchain.zip")
+        os.path.join(config_dir_1, "group_blockchain.zip"),
     )
     shutil.copy(
         group_did_manager_1.member_did_manager.blockchain.get_blockchain_data(),
-        os.path.join(config_dir_1, "member_blockchain.zip")
+        os.path.join(config_dir_1, "member_blockchain.zip"),
     )
 
     shutil.copy(
         group_did_manager_2.blockchain.get_blockchain_data(),
-        os.path.join(config_dir_2, "group_blockchain.zip")
+        os.path.join(config_dir_2, "group_blockchain.zip"),
     )
     shutil.copy(
         group_did_manager_2.member_did_manager.blockchain.get_blockchain_data(),
-        os.path.join(config_dir_2, "member_blockchain.zip")
+        os.path.join(config_dir_2, "member_blockchain.zip"),
     )
     print("Terminating...")
     group_did_manager_1.terminate()
@@ -131,10 +136,12 @@ def load_did_manager(tarfile: str):
     extract_tar_to_directory(tarfile, appdata_path)
 
     # join the group_did_manager' blockchains
-    group_keystore = KeyStore(os.path.join(
-        appdata_path, "group_keys.json"), key)
-    member_keystore = KeyStore(os.path.join(
-        appdata_path, "member_keys.json"), key)
+    group_keystore = KeyStore(
+        os.path.join(appdata_path, "group_keys.json"), key
+    )
+    member_keystore = KeyStore(
+        os.path.join(appdata_path, "member_keys.json"), key
+    )
     group_blockchain_id = blockchain_id_from_did(
         group_keystore.get_custom_metadata()[KEYSTORE_DID]
     )
@@ -143,18 +150,23 @@ def load_did_manager(tarfile: str):
     )
 
     try:
+        if member_blockchain_id in waly.list_blockchain_ids():
+            waly.delete_blockchain(member_blockchain_id)
         waly.join_blockchain_from_zip(
             member_blockchain_id,
-            os.path.join(appdata_path, "member_blockchain.zip")
+            os.path.join(appdata_path, "member_blockchain.zip"),
         )
     except waly.BlockchainAlreadyExistsError:
-        pass
+        raise Exception("Delete this blockchain first")
     try:
+        if group_blockchain_id in waly.list_blockchain_ids():
+            waly.delete_blockchain(group_blockchain_id)
         waly.join_blockchain_from_zip(
             group_blockchain_id,
-            os.path.join(appdata_path, "group_blockchain.zip")
+            os.path.join(appdata_path, "group_blockchain.zip"),
         )
     except waly.BlockchainAlreadyExistsError:
+        raise Exception("Delete this blockchain first")
         pass
 
     return GroupDidManager(group_keystore, member_keystore)
