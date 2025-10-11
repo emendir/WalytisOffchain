@@ -1,7 +1,7 @@
 """Rebuild the brenthy-test docker image.
 
 DON'T FORGET to update the brenthy_prereqs docker image
-if you've introduced new dependency packages!
+if you've changed or introduced new dependency packages!
 """
 
 import os

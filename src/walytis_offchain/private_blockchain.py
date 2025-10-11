@@ -338,7 +338,7 @@ class PrivateBlockchain(blockstore.BlockStore, GenericBlockchain):
 
                     data = {
                         "block_long_id": bytes_to_string(block.long_id),
-                        "one_time_key": one_time_key.get_public_key_str(),
+                        "one_time_key": one_time_key.serialise_public(),
                         "group_key_proof": signature_group,
                         "member_key_proof": signature_member,
                         "member_did": self.group_blockchain.member_did_manager.did,
@@ -354,8 +354,19 @@ class PrivateBlockchain(blockstore.BlockStore, GenericBlockchain):
                         logger.debug("Got got empty response.")
                         continue
                     try:
+                        # decrypt with our One-Time Key
+                        layer_2 = one_time_key.decrypt(response)
+
+                        # decrypt with our Member Key (serialised CodePackage)
+                        layer_1 = (
+                            self.group_blockchain.member_did_manager.decrypt(
+                                layer_2
+                            )
+                        )
+
+                        # decrypt with Group Key (serialied CodePackage)
                         decoded_response = self.group_blockchain.decrypt(
-                            response
+                            layer_1
                         )
                     except multi_crypt.crypt.LockedError:
                         logger.error(
@@ -404,7 +415,7 @@ class PrivateBlockchain(blockstore.BlockStore, GenericBlockchain):
             block_id = string_to_bytes(request["block_long_id"])
             logger.debug("Processing content request...")
 
-            one_time_key = request["one_time_key"]
+            one_time_key = Crypt.deserialise(request["one_time_key"])
             group_key_proof = CodePackage.deserialise(
                 request["group_key_proof"]
             )
@@ -447,9 +458,24 @@ class PrivateBlockchain(blockstore.BlockStore, GenericBlockchain):
             logger.debug("Got content.")
             if content:
                 logger.debug("Encrypting content...")
-                private_content = self.group_blockchain.encrypt(content)
+                latest_member_key = member._get_member_control_key()
+
+                logger.debug("Encrypting with Group Key...")
+                # encrypt with Group key (serialised CodePackage)
+                cipher_1 = self.group_blockchain.encrypt(content)
+
+                logger.debug("Encrypting with Member Key...")
+                # encrypt with peer's Member key (serialised CodePackage)
+                cipher_2 = CodePackage.encrypt(
+                    data=cipher_1, key=latest_member_key
+                ).serialise_bytes()
+
+                logger.debug("Encrypting with OneTime Key...")
+                # encrypt with peer's OneTime Key (without CodePackage)
+
+                cipher_3 = one_time_key.encrypt(cipher_2)
                 logger.debug("Transmitting content...")
-                conv.say(private_content, timeout_sec=COMMS_TIMEOUT_S)
+                conv.say(cipher_3, timeout_sec=COMMS_TIMEOUT_S)
             else:
                 logger.debug("Didn't find requested content.")
             conv.close()
