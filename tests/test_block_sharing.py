@@ -113,7 +113,7 @@ import docker_block_sharing
 from docker_block_sharing import shared_data
 
 
-docker_block_sharing.test_preparations()
+docker_block_sharing.test_preparations_docker()
 docker_block_sharing.docker_part()
 """
     shared_data.containers[0].run_python_code(

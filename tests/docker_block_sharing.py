@@ -17,11 +17,13 @@ from time import sleep
 from walytis_offchain import PrivateBlockchain
 from walytis_offchain.log import logger_waloff as logger
 import threading
+
 import logging
+
 
 logger.setLevel(logging.DEBUG)
 
-SYNC_DUR = 30
+SYNC_DUR = 40
 
 
 class SharedData:
@@ -32,7 +34,7 @@ shared_data = SharedData()
 logger.info("Initialised shared_data.")
 
 
-def test_preparations():
+def test_preparations_docker():
     shared_data.group_did_manager = None
     shared_data.pri_blockchain = None
     shared_data.containers: list[PriBlocksDocker] = []
@@ -40,7 +42,6 @@ def test_preparations():
     # Load pre-created GroupDidManager objects for testing:
 
     logger.info("Loading GDMs from tar files...")
-    # choose which group_did_manager to load
     tarfile = "group_did_manager_1.tar"
     shared_data.group_did_manager = load_did_manager(
         os.path.join(os.path.dirname(__file__), tarfile)
