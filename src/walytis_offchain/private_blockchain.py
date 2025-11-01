@@ -4,7 +4,7 @@ from brenthy_tools_beta.utils import bytes_to_string, string_to_bytes
 from multi_crypt import Crypt
 import multi_crypt
 from threading import Thread
-from datetime import datetime
+from datetime import datetime, UTC
 import threading
 from time import sleep
 import json
@@ -228,7 +228,7 @@ class PrivateBlockchain(blockstore.BlockStore, GenericBlockchain):
         instead of letting walytis_beta_api do.
         """
         # ensure we don't process a block too soon
-        block_age = (datetime.utcnow() - block.creation_time).total_seconds()
+        block_age = (datetime.now(UTC) - block.creation_time).total_seconds()
         if block_age < MIN_BLOCK_AGE_S:
             sleep(MIN_BLOCK_AGE_S - block_age)
             if self._terminate:
