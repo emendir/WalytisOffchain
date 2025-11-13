@@ -1,3 +1,4 @@
+import _auto_run_with_pytest  # noqa
 import logging
 import os
 

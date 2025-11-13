@@ -454,7 +454,7 @@ class PrivateBlockchain(blockstore.BlockStore, GenericBlockchain):
         self.terminate()
 
     def check_unlocked(self) -> bool:
-        if not self.group_blockchain.get_control_key().private_key:
+        if not self.group_blockchain.get_control_keys().is_unlocked():
             logger.debug(
                 f"PB: GroupDidManager is locked: {self.group_blockchain.did}"
             )

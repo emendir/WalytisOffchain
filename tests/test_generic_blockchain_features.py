@@ -6,7 +6,7 @@ import pytest
 import walytis_identities
 from walytis_offchain import PrivateBlockchain
 from walytis_identities.did_manager import DidManager
-from walytis_identities.did_objects import Key
+from walytis_identities.key_objects import Key
 from walytis_identities.group_did_manager import GroupDidManager
 from walytis_identities.key_store import KeyStore
 from walytis_beta_api._experimental import generic_blockchain_testing

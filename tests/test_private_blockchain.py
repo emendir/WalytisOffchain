@@ -9,7 +9,7 @@ import walytis_identities
 import walytis_beta_api as waly
 from walytis_offchain import PrivateBlockchain
 from walytis_identities.did_manager import DidManager
-from walytis_identities.did_objects import Key
+from walytis_identities.key_objects import Key
 from walytis_identities.group_did_manager import GroupDidManager
 from walytis_identities.key_store import KeyStore
 
