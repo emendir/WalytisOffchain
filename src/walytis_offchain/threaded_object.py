@@ -8,6 +8,7 @@ from threading import Thread
 from typing import Any, Callable, Tuple
 
 from loguru import logger
+import traceback
 
 
 class DedicatedThreadClass:
@@ -26,7 +27,9 @@ class DedicatedThreadClass:
         while not self._terminate_flag:
             try:
                 # Fetch a task from the queue and execute it
-                task, args, kwargs, result_queue = self.task_queue.get(timeout=0.1)
+                task, args, kwargs, result_queue = self.task_queue.get(
+                    timeout=0.1
+                )
                 try:
                     # logger.debug(f"DTC: Running function {task.__name__} on dedicated thread...")
                     result = task(*args, **kwargs)
@@ -34,8 +37,11 @@ class DedicatedThreadClass:
                     # task.__name__} on dedicated thread.")
 
                 except Exception as e:
-                    logger.debug(f"DTC: Function {task.__name__} ran into an exception.")
-                    logger.debug(str(e))
+                    logger.error(
+                        f"DTC: Function {task.__name__} ran into an exception."
+                    )
+                    logger.error(str(e))
+                    logger.error(traceback.format_exc())
                 # logger.debug("DTC: Returning result...")
                 result_queue.put(result)
             except queue.Empty:
@@ -75,15 +81,18 @@ def run_on_dedicated_thread(func: Callable) -> Callable:
 
     Is a decorator.
     """
+
     @functools.wraps(func)
     def wrapper(self: DedicatedThreadClass, *args: Any, **kwargs: Any) -> None:
-        if hasattr(self, '_run_on_dedicated_thread'):
+        if hasattr(self, "_run_on_dedicated_thread"):
             result = self._run_on_dedicated_thread(func, self, *args, **kwargs)
             return result
         else:
             raise AttributeError(
                 f"{self.__class__.__name__} must inherit from "
-                "DedicatedThreadClass to use run_on_dedicated_thread")
+                "DedicatedThreadClass to use run_on_dedicated_thread"
+            )
+
     return wrapper
 
 
@@ -103,5 +112,5 @@ if __name__ == "__main__":
 
     # Example usage:
     obj = MyClass()
-    obj.core_method('arg1', 'arg2')  # This will run on the dedicated thread
-    obj.terminate()                  # This will stop the dedicated thread
+    obj.core_method("arg1", "arg2")  # This will run on the dedicated thread
+    obj.terminate()  # This will stop the dedicated thread

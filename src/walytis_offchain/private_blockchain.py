@@ -69,8 +69,8 @@ class PrivateBlockchain(blockstore.BlockStore, GenericBlockchain):
             update_blockids_before_handling:
         """
         self._terminate = False
+        self._group_blockchain = group_blockchain
         blockstore.BlockStore.__init__(self)
-        self.group_blockchain = group_blockchain
 
         if base_blockchain:
             self.base_blockchain = base_blockchain
@@ -94,9 +94,9 @@ class PrivateBlockchain(blockstore.BlockStore, GenericBlockchain):
                 eventhandler=self.handle_content_request,
             )
         )
-        logger.debug(
-            f"Started Listener: {self.content_request_listener._listener_name}"
-        )
+        # logger.debug(
+        #     f"Started Listener: {self.content_request_listener._listener_name}"
+        # )
 
         self.base_blockchain.block_received_handler = self._on_block_received
         # list to store members' DidManagers in
@@ -107,6 +107,10 @@ class PrivateBlockchain(blockstore.BlockStore, GenericBlockchain):
         if auto_load_missed_blocks:
             self.load_missed_blocks()
             self._blocks_to_find_thr.start()
+
+    @property
+    def group_blockchain(self) -> GroupDidManager:
+        return self._group_blockchain
 
     def _init_blocks(self):
         known_block_ids = self.get_known_blocks()
@@ -433,10 +437,9 @@ class PrivateBlockchain(blockstore.BlockStore, GenericBlockchain):
         self.content_request_listener.terminate()
         blockstore.BlockStore.terminate(self)
         for did_manager in self.members.values():
-            logger.info("Terminating member...")
+            logger.debug("Terminating member...")
             did_manager.terminate()
         self._blocks_to_find_thr.join()
-        logger.info("PB: TERMINATED!")
 
     def delete(self, **kwargs) -> None:
         self.terminate(**kwargs)

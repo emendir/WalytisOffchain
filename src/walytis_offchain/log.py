@@ -31,8 +31,10 @@ file_handler.setFormatter(formatter)
 
 logger_waloff = logging.getLogger("Walytis_Offchain")
 logger_waloff.setLevel(logging.DEBUG)
-
 logger_waloff.addHandler(file_handler)
+logger_blockstore = logging.getLogger("Waloff.BlockStore")
+logger_blockstore.setLevel(logging.DEBUG)
+logger_blockstore.addHandler(file_handler)
 
 # add console_handler if needed
 if not any(type(h) == logging.StreamHandler for h in logger_waloff.handlers):
