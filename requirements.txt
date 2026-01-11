@@ -1,1 +1,1 @@
-walytis_identities>=0.5.1
+walytis_identities>=0.5.0
