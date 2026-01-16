@@ -96,3 +96,5 @@ if True:
     walytis_identities.log.console_handler.setLevel(logging.DEBUG)
     walytis_offchain.log.console_handler.setLevel(logging.DEBUG)
     walytis_beta_embedded.set_appdata_dir("./.blockchains")
+
+    os.environ["PRIVATE_BLOCKS_DATA_DIR"] = os.path.join(WORKDIR, ".waloff")
