@@ -3,6 +3,8 @@
 Runs automatically when pytest runs a test before loading the test module.
 """
 
+import threading
+import time
 import logging
 from emtest import assert_is_loaded_from_source
 from emtest import set_env_var
@@ -43,6 +45,14 @@ def pytest_configure(config):
     terminal = config.pluginmanager.get_plugin("terminalreporter")
     if terminal:
         terminal.write_line(f"Python {sys.version.split(' ')[0]}")
+
+
+def pytest_sessionfinish(
+    session: pytest.Session,
+    exitstatus: pytest.ExitCode,
+) -> None:
+    """Clean up after pytest has finished."""
+    os._exit(int(exitstatus))  # force close terminating dangling threads
 
 
 if True:
@@ -98,3 +108,29 @@ if True:
     walytis_beta_embedded.set_appdata_dir("./.blockchains")
 
     os.environ["PRIVATE_BLOCKS_DATA_DIR"] = os.path.join(WORKDIR, ".waloff")
+
+    from walytis_offchain.log import file_handler, console_handler, formatter
+
+    file_handler.setLevel(logging.DEBUG)
+    console_handler.setLevel(logging.DEBUG)
+
+    # add logging for IPFS-Toolkit
+    from ipfs_tk_transmission.log import logger_transm, logger_conv
+    from emtest.log_utils import get_app_log_dir
+
+    file_handler_ipfs = logging.handlers.RotatingFileHandler(
+        os.path.join(get_app_log_dir("IPFS_TK", "Waly"), "IPFS_TK.log"),
+        maxBytes=5 * 1024 * 1024,
+        backupCount=5,
+    )
+    file_handler_ipfs.setLevel(logging.DEBUG)
+    file_handler_ipfs.setFormatter(formatter)
+    logger_transm.addHandler(file_handler_ipfs)
+    logger_conv.addHandler(file_handler_ipfs)
+    logger_conv.setLevel(logging.DEBUG)
+    logger_transm.setLevel(logging.DEBUG)
+
+    disabled_loggers = ["urllib3.connectionpool"]
+    for logger_name in disabled_loggers:
+        logger = logging.getLogger(logger_name)
+        logger.setLevel(logging.WARNING)

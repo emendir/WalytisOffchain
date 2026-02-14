@@ -2,7 +2,11 @@ import logging
 from logging.handlers import RotatingFileHandler
 import os
 
-LOG_PATH = ".walytis_offchain.log"
+from emtest.log_utils import get_app_log_dir
+
+LOG_PATH = os.path.join(
+    get_app_log_dir("WalytisOffchain", "Waly"), "WalytisOffchain.log"
+)
 
 print(f"Logging to {os.path.abspath(LOG_PATH)}")
 
