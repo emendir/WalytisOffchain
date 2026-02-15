@@ -14,7 +14,7 @@ from waloff_docker.waloff_docker import (
 )
 
 from walytis_offchain import PrivateBlockchain
-from walytis_offchain.log import logger_waloff as logger
+from conftest import logger_tests as logger, cleanup_walytis_ipfs
 
 print(
     coloured(
@@ -77,6 +77,7 @@ def cleanup():
         shared_data.group_did_manager.delete()
     if shared_data.pri_blockchain:
         shared_data.pri_blockchain.delete()
+    cleanup_walytis_ipfs()
 
 
 def test_load_blockchain():

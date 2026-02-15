@@ -3,6 +3,8 @@
 Runs automatically when pytest runs a test before loading the test module.
 """
 
+from ipfs_node import IpfsNode
+from emtest.log_utils import get_app_log_dir
 import threading
 import time
 import logging
@@ -35,6 +37,11 @@ os.chdir(WORKDIR)
 
 # add source code paths to python's search paths
 add_path_to_python(SRC_DIR)
+
+logger_tests = logging.getLogger("Tests-WalOff")
+logger_tests.setLevel(logging.DEBUG)
+logger_pytest = logging.getLogger("Pytest")
+logger_pytest.setLevel(logging.DEBUG)
 
 
 @pytest.hookimpl(trylast=True)
@@ -111,6 +118,24 @@ if True:
 
     from walytis_offchain.log import file_handler, console_handler, formatter
 
+    plain_console_handler = logging.StreamHandler()
+    plain_console_handler.setLevel(logging.DEBUG)
+
+    file_handler_tests = logging.handlers.RotatingFileHandler(
+        os.path.join(
+            get_app_log_dir("WalOff_Tests", "Waly"), "Tests-WalOff.log"
+        ),
+        maxBytes=4 * 1024 * 1024,
+        backupCount=4,
+    )
+    file_handler_tests.setLevel(logging.DEBUG)
+    file_handler_tests.setFormatter(formatter)
+    logger_tests.addHandler(file_handler_tests)
+    logger_tests.addHandler(plain_console_handler)
+
+    logger_pytest.addHandler(plain_console_handler)
+    logger_pytest.addHandler(file_handler_tests)
+
     file_handler.setLevel(logging.DEBUG)
     console_handler.setLevel(logging.DEBUG)
 
@@ -134,3 +159,15 @@ if True:
     for logger_name in disabled_loggers:
         logger = logging.getLogger(logger_name)
         logger.setLevel(logging.WARNING)
+
+
+def cleanup_walytis_ipfs():
+    if not USING_BRENTHY:
+        print("Terminating Walytis...")
+        walytis_beta_embedded.terminate()
+
+    if isinstance(ipfs, IpfsNode):
+        ipfs.terminate()
+    else:
+        # remove connections to old docker containers
+        ipfs.peers.disconnect(ipfs.peers.list_peers())

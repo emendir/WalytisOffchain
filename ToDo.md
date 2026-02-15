@@ -1,2 +1,4 @@
-- [ ] triple-layer encryption: GroupDidManager, Member & spontaneous ephemeral keys
-- [ ] authorise content requests with member and group signatures
+
+## Tests
+
+- figure out why run_all_tests needs to rebcreate preuilt group-did-managers

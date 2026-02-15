@@ -71,12 +71,17 @@ def docker_part():
     logger.debug(block.content)
     sleep(SYNC_DUR)
 
+    logger.debug("Terminating private blockchain...")
     shared_data.pri_blockchain.terminate()
     logger.debug("Terminated private blockchain.")
     shared_data.group_did_manager.terminate()
     shared_data.group_did_manager.member_did_manager.terminate()
     # test_block_sharing.cleanup()
     logger.debug("Finished cleanup.")
-    while len(threading.enumerate()) > 1:
-        logger.debug(threading.enumerate())
-        sleep(1)
+    for i in range(10):
+        if len(threading.enumerate()) > 1:
+            logger.debug(threading.enumerate())
+            sleep(1)
+        else:
+            return
+    os._exit(0)  # hard exit, killing threads

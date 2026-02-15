@@ -14,9 +14,10 @@ pytest_args = sys.argv[1:]
 
 
 TEST_FUNC_TIMEOUT_SEC = 300
-REPORTS_DIR_PREF = env_vars.str(
-    "WALY_TEST_REPORTS_DIR", default=os.path.join("reports", "report-")
+WALY_TEST_REPORTS_DIR = env_vars.str(
+    "WALY_TEST_REPORTS_DIR", default=os.path.join("reports")
 )
+REPORTS_DIR_PREF = os.path.join(WALY_TEST_REPORTS_DIR, "report-")
 
 
 def run_tests() -> None:
@@ -45,7 +46,7 @@ def run_tests() -> None:
 
 
 print("Starting Brenthy...")
-os.system("sudo systemctl start ipfs brenthy")
+os.system("sudo systemctl restart ipfs brenthy")
 sleep(5)
 if True:
     os.chdir(WORKDIR)
@@ -54,19 +55,27 @@ if True:
     from prebuilt_group_did_managers import create_did_managers
 
 
-if env_vars.bool("TESTS_REBUILD_DOCKER", default=True):
-    create_did_managers()
-    build_docker_image(verbose=False)
+create_did_managers()
+build_docker_image(verbose=False)
 
 set_env_var("TESTS_REBUILD_DOCKER", False)
 
 # Test Procedure (Post-Prep)
 
-set_env_var("WALYTIS_TEST_MODE", "RUN_BRENTHY")
 print("Running tests with Brenthy...")
+set_env_var("WALYTIS_BETA_API_TYPE", "WALYTIS_BETA_BRENTHY_API")
+set_env_var("IPFS_TK_MODE", "HTTP")
 run_tests()
 
-set_env_var("WALYTIS_TEST_MODE", "EMBEDDED")
+set_env_var("WALYTIS_BETA_API_TYPE", "WALYTIS_BETA_DIRECT_API")
+set_env_var("IPFS_TK_MODE", "EMBEDDED")
+os.system("sudo systemctl stop ipfs brenthy")
+os.system(
+    f"{sys.executable} "
+    f"{os.path.join(WORKDIR, 'prebuilt_group_did_managers.py')}"
+)
+build_docker_image(verbose=False)
+
 print("Running tests with Walytis Embedded...")
 run_tests()
 

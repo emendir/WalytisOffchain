@@ -1,6 +1,6 @@
+import _auto_run_with_pytest  # noqa
 from emtest import await_thread_cleanup
 import pytest
-import _auto_run_with_pytest
 import os
 import shutil
 import tempfile
@@ -16,6 +16,7 @@ from walytis_identities.key_objects import Key
 from walytis_identities.group_did_manager import GroupDidManager
 from walytis_identities.key_store import KeyStore
 
+from conftest import logger_tests as logger, cleanup_walytis_ipfs
 
 REBUILD_DOCKER = True
 blockstore.MAX_KEY_USAGE = 5
@@ -110,4 +111,5 @@ def test_reload_blockchain():
 def test_threads_cleanup() -> None:
     """Test that no threads are left running."""
     cleanup()
+    cleanup_walytis_ipfs()
     assert await_thread_cleanup(timeout=5)
