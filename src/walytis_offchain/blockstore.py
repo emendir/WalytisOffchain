@@ -10,6 +10,7 @@ from walytis_offchain.threaded_object import (
 )
 from .log import logger_blockstore as logger
 from walytis_identities.did_manager import CTRL_KEY_FAMILIES
+from walytis_identities.key_store import UnknownKeyError
 
 
 _PRIVATE_BLOCKS_DATA_DIR = os.getenv("PRIVATE_BLOCKS_DATA_DIR", "")
@@ -134,7 +135,7 @@ class BlockStore(ABC, DedicatedThreadClass):
             self._current_key = None
 
     @run_on_dedicated_thread
-    def get_block_content(self, block_id: bytes):
+    def get_block_content(self, block_id: bytes) -> bytes | None:
         cursor = self.content_db.cursor()
         cursor.execute(
             """
@@ -148,7 +149,11 @@ class BlockStore(ABC, DedicatedThreadClass):
                 return None
             case 1:
                 encrypted_content, key_id = result[0]
-                key = self.keystore.get_keygroup(key_id)
+                try:
+                    key = self.keystore.get_keygroup(key_id)
+                except UnknownKeyError as e:
+                    logger.error("Failed to get key to decrypt message")
+                    return None
                 return key.decrypt(encrypted_content)
             case _:
                 raise Exception(

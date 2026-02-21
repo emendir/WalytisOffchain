@@ -149,6 +149,8 @@ class PrivateBlockchain(blockstore.BlockStore, GenericBlockchain):
         if isinstance(block, bytes | bytearray):
             block = self.base_blockchain.get_block(block)
         content = self.get_block_content(block.long_id)
+        if not content:
+            raise BlockNotFoundError()
         author = self.get_block_author_did(block)
         return DataBlock(block, content, author)
 
@@ -342,18 +344,25 @@ class PrivateBlockchain(blockstore.BlockStore, GenericBlockchain):
                         # double-check communications are encrypted
                         assert conv._encryption_callback is not None
                         assert conv._decryption_callback is not None
-                        data = {
-                            "block_long_id": bytes_to_string(block.long_id),
-                        }
                         # receive salutation
                         salute = conv.listen(timeout=COMMS_TIMEOUT_S)
-                        assert salute == "Hello there!".encode()
+                        if not salute == "Hello there!".encode():
+                            logger.error("Received unexpected salute.")
+                            return
 
+                        logger.debug("Received Salute!")
                         if self._terminate:
                             return
 
+                        data = {
+                            "block_long_id": bytes_to_string(block.long_id),
+                        }
                         logger.debug("Sending private content request...")
-                        conv.say(json.dumps(data).encode(), COMMS_TIMEOUT_S)
+                        said = conv.say(
+                            json.dumps(data).encode(), COMMS_TIMEOUT_S
+                        )
+                        if not said:
+                            raise Exception("Failed to communicate with peer.")
                         logger.debug("Awaiting private content...")
                         private_content = conv.listen(COMMS_TIMEOUT_S)
                         logger.debug("Got response!")
@@ -385,7 +394,6 @@ class PrivateBlockchain(blockstore.BlockStore, GenericBlockchain):
                     "Exiting ask_around_for_content because of termination"
                 )
                 return None
-            sleep(1)
         self.store_block_content(block.long_id, private_content)
         return private_content
 
@@ -397,11 +405,15 @@ class PrivateBlockchain(blockstore.BlockStore, GenericBlockchain):
         assert conv._encryption_callback is not None
         assert conv._decryption_callback is not None
         try:
-            logger.debug("BRH: Joined conversation.")
-            assert conv.say("Hello there!".encode())
+            logger.debug("BRH: Joined conversation!")
+            saluted = conv.say("Hello there!".encode())
+            if not saluted:
+                raise Exception("Failed to salute peer.")
             if self._terminate:
+                logger.debug("BRH: aborting because of termination.")
                 return
 
+            logger.debug("BRH: awaiting request...")
             _request = conv.listen(timeout=COMMS_TIMEOUT_S)
             request = json.loads(_request.decode())
             block_id = string_to_bytes(request["block_long_id"])
@@ -410,7 +422,9 @@ class PrivateBlockchain(blockstore.BlockStore, GenericBlockchain):
             content = self.get_block_content(block_id)
             logger.debug("Got content.")
             if content:
-                conv.say(content, timeout_sec=COMMS_TIMEOUT_S)
+                said = conv.say(content, timeout_sec=COMMS_TIMEOUT_S)
+                if not said:
+                    raise Exception("Failed to communicate with peer.")
             else:
                 logger.debug("Didn't find requested content.")
             conv.close()
@@ -467,3 +481,7 @@ class PrivateBlockchain(blockstore.BlockStore, GenericBlockchain):
                 f"PB: GroupDidManager is unlocked: {self.group_blockchain.did}"
             )
             return True
+
+
+class BlockNotFoundError(Exception):
+    pass
