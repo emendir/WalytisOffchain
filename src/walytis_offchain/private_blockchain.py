@@ -394,6 +394,7 @@ class PrivateBlockchain(blockstore.BlockStore, GenericBlockchain):
                     "Exiting ask_around_for_content because of termination"
                 )
                 return None
+            sleep(1)
         self.store_block_content(block.long_id, private_content)
         return private_content
 
