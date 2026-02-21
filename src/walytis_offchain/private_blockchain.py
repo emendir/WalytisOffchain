@@ -321,7 +321,7 @@ class PrivateBlockchain(blockstore.BlockStore, GenericBlockchain):
                     peers.remove(peer)
                 if peer != ipfs.peer_id:
                     peers.insert(0, peer)
-            logger.info(f"Asking peers: {len(peers)}")
+            # logger.debug(f"Asking peers: {len(peers)}")
             try:
                 for peer in peers:
                     if self._terminate:
@@ -473,14 +473,14 @@ class PrivateBlockchain(blockstore.BlockStore, GenericBlockchain):
 
     def check_unlocked(self) -> bool:
         if not self.group_blockchain.get_control_keys().is_unlocked():
-            logger.debug(
-                f"PB: GroupDidManager is locked: {self.group_blockchain.did}"
-            )
+            # logger.debug(
+            #     f"PB: GroupDidManager is locked: {self.group_blockchain.did}"
+            # )
             return False
         else:
-            logger.debug(
-                f"PB: GroupDidManager is unlocked: {self.group_blockchain.did}"
-            )
+            # logger.debug(
+            #     f"PB: GroupDidManager is unlocked: {self.group_blockchain.did}"
+            # )
             return True
 
 
